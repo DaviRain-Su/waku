@@ -941,6 +941,7 @@ impl AgentSession {
         }
     }
 
+    #[cfg(test)]
     pub fn begin_turn(&mut self, prompt: impl Into<String>) -> Uuid {
         self.begin_turn_with_presentation(prompt, None, Vec::new())
     }

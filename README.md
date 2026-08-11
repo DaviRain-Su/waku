@@ -99,11 +99,11 @@ notarization, and staples the accepted ticket:
 brew install create-dmg
 xcrun notarytool store-credentials NOTARY
 
-bun scripts/release.ts
+WAKU_SIGNING_IDENTITY=YOUR_APPLE_TEAM_ID bun scripts/release.ts
 ```
 
-The packager selects the Developer ID identity matching team `GJE9R5VE87` and
-the `NOTARY` keychain profile by default. The default artifact is
+The packager selects the Developer ID identity from `WAKU_SIGNING_IDENTITY`
+and uses the `NOTARY` keychain profile by default. The default artifact is
 `dist/Waku-<version>.dmg`. Use an ad-hoc signature to exercise the complete
 local build and disk-image flow without Apple distribution credentials:
 

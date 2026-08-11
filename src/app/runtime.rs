@@ -2,7 +2,7 @@ use super::*;
 
 fn start_driver(mut request: DriverStartRequest, cwd: PathBuf) -> anyhow::Result<PreparedDriver> {
     request.options.cwd = cwd;
-    let (event_tx, events) = unbounded();
+    let (event_tx, events) = driver::event_channel(request.event_wake);
     let handle = driver::start(request.provider, request.options, event_tx)?;
     Ok(PreparedDriver { handle, events })
 }
@@ -16,8 +16,7 @@ fn prepare_submission(
     driver_start: Option<anyhow::Result<DriverStartRequest>>,
     session_id: Uuid,
     prompt: &str,
-    baseline_count: usize,
-    baseline_in_flight: bool,
+    turn_count: usize,
 ) -> anyhow::Result<PreparedSubmission> {
     let workspace = match workspace {
         SessionWorkspace::NewWorktree { base_branch } => {
@@ -40,17 +39,11 @@ fn prepare_submission(
     };
     let project_path = workspace.path().unwrap_or(&project.path);
 
-    // The pre-turn checkpoint is what a later rewind restores to. A capture
-    // already running for the same turn writes this exact ref, so starting a
-    // second `git add -A` would only race equivalent work over the workspace.
-    let checkpoint_warning = (!baseline_in_flight)
-        .then(|| {
-            let git_ref = checkpoint::checkpoint_ref(session_id, baseline_count);
-            (!checkpoint::has_ref(project_path, &git_ref))
-                .then(|| checkpoint::capture_turn(project_path, session_id, baseline_count).err())
-                .flatten()
-        })
-        .flatten()
+    // Every turn gets its own immutable starting snapshot. Reusing the prior
+    // response's ending ref would attribute branch switches or terminal edits
+    // made between turns to the next response.
+    let checkpoint_warning = checkpoint::capture_turn_start(project_path, session_id, turn_count)
+        .err()
         .map(|error| tr!("errors.capture_pre_turn_checkpoint", error = error));
 
     // Process startup can synchronously resolve executables, bind sockets,
@@ -105,15 +98,22 @@ fn perform_message_rewind(
     mut request: MessageRewindRequest,
 ) -> Result<PreparedMessageRewind, String> {
     let session_id = request.session_id;
-    let checkpoint_ref = checkpoint::checkpoint_ref(session_id, request.retained_turn_count);
-    if !checkpoint::has_ref(&request.project_path, &checkpoint_ref) {
+    let turn_start_ref =
+        checkpoint::turn_start_ref(session_id, request.retained_turn_count.saturating_add(1));
+    let retained_ref = checkpoint::checkpoint_ref(session_id, request.retained_turn_count);
+    let restore_ref = if checkpoint::has_ref(&request.project_path, &turn_start_ref) {
+        turn_start_ref
+    } else {
+        retained_ref
+    };
+    if !checkpoint::has_ref(&request.project_path, &restore_ref) {
         return Err(tr!("session.pre_turn_checkpoint_missing"));
     }
 
     let safety_ref = format!("refs/waku/revert-backup-{session_id}-{}", Uuid::new_v4());
     checkpoint::capture_ref(&request.project_path, &safety_ref)
         .map_err(|error| tr!("errors.create_rewind_snapshot", error = error))?;
-    if let Err(error) = checkpoint::restore_ref(&request.project_path, &checkpoint_ref) {
+    if let Err(error) = checkpoint::restore_ref(&request.project_path, &restore_ref) {
         return Err(
             match checkpoint::restore_ref(&request.project_path, &safety_ref) {
                 Ok(()) => {
@@ -696,6 +696,7 @@ impl Waku {
         self.provider_model_discoveries.insert(provider);
         self.provider_model_discoveries_pending.insert(provider);
         let provider_probe_tx = self.provider_probe_tx.clone();
+        let event_wake = self.event_wake_tx.clone();
         if std::thread::Builder::new()
             .name(format!("waku-{}-model-discovery", provider.id()))
             .spawn(move || {
@@ -705,9 +706,13 @@ impl Waku {
                 if let Some(models) = crate::model_catalog::cached_models(provider) {
                     let mut cached = probe.clone();
                     cached.models = models;
-                    let _ = provider_probe_tx.send(cached);
+                    if provider_probe_tx.send(cached).is_ok() {
+                        signal_event_pump(&event_wake);
+                    }
                 }
-                let _ = provider_probe_tx.send(probe.discover_models());
+                if provider_probe_tx.send(probe.discover_models()).is_ok() {
+                    signal_event_pump(&event_wake);
+                }
             })
             .is_err()
         {
@@ -731,11 +736,14 @@ impl Waku {
                 continue;
             }
             let provider_version_tx = self.provider_version_tx.clone();
+            let event_wake = self.event_wake_tx.clone();
             if std::thread::Builder::new()
                 .name(format!("waku-{}-version-probe", provider.id()))
                 .spawn(move || {
                     let version = probe_provider_version(&path);
-                    let _ = provider_version_tx.send((provider, version));
+                    if provider_version_tx.send((provider, version)).is_ok() {
+                        signal_event_pump(&event_wake);
+                    }
                 })
                 .is_err()
             {
@@ -769,6 +777,7 @@ impl Waku {
         self.provider_detection_remaining = providers.len();
         let overrides = self.state.provider_binary_overrides.clone();
         let provider_detection_tx = self.provider_detection_tx.clone();
+        let event_wake = self.event_wake_tx.clone();
         let detect_providers = providers.clone();
         if std::thread::Builder::new()
             .name("waku-provider-detection".into())
@@ -778,7 +787,12 @@ impl Waku {
                         Some(binary) => crate::command_env::resolve_binary_override(binary),
                         None => crate::command_env::find_executable(provider.command()),
                     };
-                    let _ = provider_detection_tx.send((provider, path.is_some(), path));
+                    if provider_detection_tx
+                        .send((provider, path.is_some(), path))
+                        .is_ok()
+                    {
+                        signal_event_pump(&event_wake);
+                    }
                 }
             })
             .is_err()
@@ -889,6 +903,31 @@ impl Waku {
         }
     }
 
+    fn checkpoint_capture_pending(&self, session_id: Uuid, turn_count: usize) -> bool {
+        self.checkpoint_captures_in_flight
+            .contains(&(session_id, turn_count))
+            || self
+                .pending_checkpoint_captures
+                .iter()
+                .any(|capture| capture.session_id == session_id && capture.turn_count == turn_count)
+    }
+
+    fn ending_checkpoint_pending(&self, session_id: Uuid) -> bool {
+        self.state
+            .sessions
+            .iter()
+            .find(|session| session.id == session_id)
+            .and_then(|session| session.turns.last())
+            .filter(|turn| turn.status != TurnStatus::Running)
+            .is_some_and(|turn| self.checkpoint_capture_pending(session_id, turn.turn_count))
+    }
+
+    fn defer_queue_drain(&mut self, session_id: Uuid) {
+        if !self.pending_queue_drains.contains(&session_id) {
+            self.pending_queue_drains.push(session_id);
+        }
+    }
+
     /// Queues the newest finished turn's checkpoint for capture.
     ///
     /// Bookkeeping only. The capture itself is upwards of ten `git`
@@ -913,6 +952,9 @@ impl Waku {
         else {
             return;
         };
+        if self.checkpoint_capture_pending(session_id, turn_count) {
+            return;
+        }
         let Some(project_path) = self
             .workspace_path_for_session(session)
             .map(std::path::Path::to_path_buf)
@@ -998,12 +1040,16 @@ impl Waku {
                     if let Some(turn_id) = attached_turn_id
                         && selected
                     {
-                        // The next queued prompt can already be visible when
-                        // capture lands. Reconcile a standalone card by row
-                        // identity, then remeasure the terminal response when
-                        // the card is hosted inline before its footer.
+                        // Reconcile a standalone card by row identity, then
+                        // remeasure the terminal response when the card is
+                        // hosted inline before its footer.
                         waku.splice_transcript_rows_after_visibility_change(&previous_kinds);
                         waku.remeasure_changed_files(turn_id);
+                    }
+                    let resume_queue = waku.pending_queue_drains.contains(&session_id);
+                    if resume_queue {
+                        waku.pending_queue_drains.retain(|id| *id != session_id);
+                        waku.drain_queued_message(session_id, cx);
                     }
                     cx.notify();
                     if attached_turn_id.is_some() {
@@ -1704,8 +1750,11 @@ impl Waku {
             // Headless drivers retain their original native session ID. Recreate
             // them lazily so the next prompt resumes the fork instead.
             self.runtimes.remove(&session_id);
+            self.mark_background_work_lost(session_id);
         } else if let Some(runtime) = self.runtimes.get_mut(&session_id) {
-            runtime.pending_events.clear();
+            runtime
+                .pending_events
+                .retain(|event| matches!(event, DriverEvent::BackgroundWork(_)));
             runtime.stream_remeasure_pending = false;
             runtime.stream_phase = None;
             runtime.pending_permission = None;
@@ -1795,7 +1844,11 @@ impl Waku {
                     .sessions
                     .iter()
                     .find(|session| session.id == **session_id);
-                session_is_reapable(session, runtime.last_active_at.elapsed())
+                session_is_reapable(
+                    session,
+                    runtime.last_active_at.elapsed(),
+                    self.session_has_live_background_work(**session_id),
+                )
             })
             .map(|(session_id, _)| *session_id)
             .collect::<Vec<_>>();
@@ -1865,6 +1918,7 @@ impl Waku {
                 computer_use_enabled: self.state.computer_use_enabled,
                 provider_cursor: session.provider_cursor.clone(),
             },
+            event_wake: self.event_wake_tx.clone(),
         })
     }
 
@@ -1889,8 +1943,15 @@ impl Waku {
                 computer_session_grants: HashSet::new(),
                 last_driver_error: None,
                 last_active_at: Instant::now(),
+                last_background_refresh_at: Instant::now()
+                    .checked_sub(BACKGROUND_WORK_REFRESH_INTERVAL)
+                    .unwrap_or_else(Instant::now),
             },
         );
+        // Startup can emit before the background task hands this receiver to
+        // the runtime map. Wake once after installation so those buffered
+        // events cannot be stranded behind an already-consumed edge.
+        signal_event_pump(&self.event_wake_tx);
         handle
     }
 
@@ -2024,7 +2085,10 @@ impl Waku {
         else {
             return;
         };
-        if session.is_busy() || session.queued_messages.is_empty() {
+        if session.is_busy()
+            || session.queued_messages.is_empty()
+            || self.ending_checkpoint_pending(session_id)
+        {
             return;
         }
         let Some(message) = self
@@ -2059,6 +2123,11 @@ impl Waku {
         else {
             return;
         };
+        if self.ending_checkpoint_pending(session_id) {
+            self.enqueue_follow_up_submission(session_id, submission, cx);
+            self.defer_queue_drain(session_id);
+            return;
+        }
         if session.status.is_busy() {
             self.enqueue_follow_up_submission(session_id, submission, cx);
             return;
@@ -2089,11 +2158,6 @@ impl Waku {
             cx.notify();
             return;
         };
-        let baseline_count = next_turn_count - 1;
-        let baseline_in_flight = self
-            .checkpoint_captures_in_flight
-            .contains(&(session_id, baseline_count));
-
         // Busy is visible before any Git work begins. The separate transient
         // set keeps this non-cancellable phase visually distinct from a
         // connecting provider, whose runtime already has a working Stop path.
@@ -2156,8 +2220,7 @@ impl Waku {
                         driver_start,
                         session_id,
                         &preparation_prompt,
-                        baseline_count,
-                        baseline_in_flight,
+                        next_turn_count,
                     )
                 })
                 .await;
@@ -2266,7 +2329,9 @@ impl Waku {
         };
         self.invalidate_checkpoint_refs();
         if let Some(runtime) = self.runtimes.get_mut(&session_id) {
-            runtime.pending_events.clear();
+            runtime
+                .pending_events
+                .retain(|event| matches!(event, DriverEvent::BackgroundWork(_)));
             runtime.pending_steers.clear();
             runtime.stream_remeasure_pending = false;
             runtime.stream_phase = None;
@@ -2327,6 +2392,42 @@ impl Waku {
         }
     }
 
+    pub(super) fn drain_event_pump(&mut self, cx: &mut Context<Self>) -> EventPumpSchedule {
+        // `|` on purpose: a busy provider must not starve the other result
+        // queues just because its own drain reported a change first.
+        if self.drain_driver_events(cx)
+            | self.drain_provider_probe_events()
+            | self.drain_provider_version_events()
+            | self.drain_provider_detection_events()
+            | self.drain_computer_permission_events()
+            | self.drain_plan_usage_events()
+        {
+            cx.notify();
+        }
+        if std::mem::take(&mut self.workspace_queries_stale) {
+            self.invalidate_workspace_queries(cx);
+        }
+        if std::mem::take(&mut self.composer_sources_stale) {
+            self.refresh_composer_sources(cx);
+        }
+        self.maybe_refresh_background_work(cx);
+        // A finished turn asks for a checkpoint from a handler with no
+        // `Context`; this is where that `git` work leaves the UI thread.
+        self.start_pending_checkpoint_captures(cx);
+
+        if self
+            .runtimes
+            .values()
+            .any(|runtime| !runtime.pending_events.is_empty() || runtime.stream_remeasure_pending)
+        {
+            EventPumpSchedule::StreamFrame
+        } else if let Some(delay) = self.background_output_refresh_delay() {
+            EventPumpSchedule::BackgroundOutput(delay)
+        } else {
+            EventPumpSchedule::Idle
+        }
+    }
+
     pub(super) fn drain_provider_probe_events(&mut self) -> bool {
         let mut changed = false;
         while let Ok(probe) = self.provider_probe_events.try_recv() {
@@ -2362,6 +2463,7 @@ impl Waku {
     pub(super) fn drain_driver_events(&mut self, cx: &mut Context<Self>) -> bool {
         let session_ids = self.runtimes.keys().copied().collect::<Vec<_>>();
         let mut changed = false;
+        let mut persisted_state_changed = false;
         let mut force_save = false;
         let mut selected_changed = false;
         for session_id in session_ids {
@@ -2371,6 +2473,7 @@ impl Waku {
             let follow_up_remeasure = std::mem::take(&mut runtime.stream_remeasure_pending);
             Self::collect_runtime_events(&mut runtime);
             let mut runtime_changed = false;
+            let mut background_changed = false;
             let mut markdown_changed = false;
             let mut revealed_stream_chunk = false;
             let mut keep_runtime = true;
@@ -2389,6 +2492,11 @@ impl Waku {
                 let Some(event) = event else {
                     break;
                 };
+                let background_event = matches!(event, DriverEvent::BackgroundWork(_));
+                let background_output_delta = matches!(
+                    event,
+                    DriverEvent::BackgroundWork(BackgroundWorkEvent::OutputDelta { .. })
+                );
                 force_save |= matches!(
                     event,
                     DriverEvent::Connected { .. }
@@ -2401,7 +2509,15 @@ impl Waku {
                         | DriverEvent::ProcessExited
                 );
                 markdown_changed |= matches!(event, DriverEvent::TextDelta(_));
-                runtime_changed = true;
+                if background_output_delta {
+                    // The registry batches log text into SharedString at 10Hz;
+                    // repainting and saving for every provider chunk would
+                    // turn a noisy command into UI-thread work.
+                } else if background_event {
+                    background_changed = true;
+                } else {
+                    runtime_changed = true;
+                }
                 keep_runtime &= self.handle_driver_event(session_id, &mut runtime, event, true, cx);
                 if !keep_runtime {
                     break;
@@ -2411,7 +2527,8 @@ impl Waku {
             if keep_runtime {
                 self.runtimes.insert(session_id, runtime);
             }
-            changed |= runtime_changed;
+            changed |= runtime_changed || background_changed;
+            persisted_state_changed |= runtime_changed;
             if self.state.selected_session == Some(session_id)
                 && (runtime_changed || follow_up_remeasure)
             {
@@ -2422,12 +2539,16 @@ impl Waku {
         if !self.pending_queue_drains.is_empty() {
             let drains = std::mem::take(&mut self.pending_queue_drains);
             for session_id in drains {
-                self.drain_queued_message(session_id, cx);
+                if self.ending_checkpoint_pending(session_id) {
+                    self.defer_queue_drain(session_id);
+                } else {
+                    self.drain_queued_message(session_id, cx);
+                }
             }
             changed = true;
         }
 
-        if changed {
+        if persisted_state_changed {
             self.stream_state_dirty = true;
         }
         if selected_changed {

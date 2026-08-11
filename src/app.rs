@@ -29,10 +29,11 @@ use crate::git_branch::BranchSnapshot;
 use crate::input::{ComposerAttachmentPaste, ComposerEvent, ComposerInput};
 use crate::md;
 use crate::model::{
-    ActivityItem, AgentSession, Checkpoint, CheckpointStatus, ContextUsage, DriverEvent,
-    FavoriteModel, InteractionMode, Message, MessageAttachment, MessageRole, PendingPermission,
-    Project, ProviderKind, ProviderModel, ProviderProbe, ProviderResumeCursor, QueuedMessage,
-    ReasoningBlock, RuntimeMode, SessionStatus, SessionWorkspace, TranscriptBlock,
+    ActivityItem, AgentSession, BackgroundWorkEvent, BackgroundWorkItem, BackgroundWorkKey,
+    BackgroundWorkKind, BackgroundWorkStatus, Checkpoint, CheckpointStatus, ContextUsage,
+    DriverEvent, FavoriteModel, InteractionMode, Message, MessageAttachment, MessageRole,
+    PendingPermission, Project, ProviderKind, ProviderModel, ProviderProbe, ProviderResumeCursor,
+    QueuedMessage, ReasoningBlock, RuntimeMode, SessionStatus, SessionWorkspace, TranscriptBlock,
     TranscriptBlockContent, TurnStatus, compact_path, unix_time, unix_time_millis,
 };
 use unicode_segmentation::UnicodeSegmentation;
@@ -99,18 +100,28 @@ const NAVIGATION_RAIL_TICK_GAP: f32 = 10.0;
 const NAVIGATION_RAIL_INACTIVE_OPACITY: f32 = 0.45;
 const NAVIGATION_RAIL_TURN_HEIGHT: f32 = NAVIGATION_RAIL_TICK_HEIGHT + NAVIGATION_RAIL_TICK_GAP;
 const NAVIGATION_RAIL_ANIMATION_DURATION: Duration = Duration::from_millis(300);
+/// Presentation pacing only. The app sleeps until a provider or background
+/// result wakes it, then uses this cadence while streamed chunks remain.
 const STREAM_FRAME_INTERVAL: Duration = Duration::from_millis(24);
 /// How long a session may sit untouched before its provider process is released.
 /// Codex and Pi stay resident between turns, so without this an afternoon of
 /// abandoned tasks is an afternoon of idle agent processes.
 const IDLE_SESSION_TIMEOUT: Duration = Duration::from_secs(30 * 60);
 const IDLE_SESSION_SWEEP_INTERVAL: Duration = Duration::from_secs(5 * 60);
+const BACKGROUND_WORK_REFRESH_INTERVAL: Duration = Duration::from_secs(5);
+const BACKGROUND_WORK_TICK_INTERVAL: Duration = Duration::from_secs(1);
+const PLAN_USAGE_MAINTENANCE_INTERVAL: Duration = Duration::from_secs(30);
 const STREAM_SAVE_INTERVAL: Duration = Duration::from_secs(1);
 /// Zed keeps status toasts on screen for ten seconds, pausing the countdown
 /// while the pointer is over the toast so a long message remains readable.
 const DEFAULT_TOAST_DURATION: Duration = Duration::from_secs(5);
 const MINIMUM_TOAST_RESUME_DURATION: Duration = Duration::from_millis(800);
 const TOAST_ANIMATION_DURATION: Duration = Duration::from_millis(150);
+
+fn signal_event_pump(wake: &smol::channel::Sender<()>) {
+    let _ = wake.try_send(());
+}
+
 /// Source bytes of parsed messages kept across session switches.
 ///
 /// Measured at ~17x expansion into parsed structures, plus flattened text and
@@ -320,8 +331,13 @@ impl ComposerSubmission {
 /// A session mid-turn is not idle however long it has been quiet: a slow tool
 /// call, or an approval waiting on the user, must not have its agent pulled out
 /// from under it.
-fn session_is_reapable(session: Option<&AgentSession>, idle_for: Duration) -> bool {
-    idle_for >= IDLE_SESSION_TIMEOUT
+fn session_is_reapable(
+    session: Option<&AgentSession>,
+    idle_for: Duration,
+    has_live_background_work: bool,
+) -> bool {
+    !has_live_background_work
+        && idle_for >= IDLE_SESSION_TIMEOUT
         && session.is_none_or(|session| {
             session.active_turn_id().is_none()
                 && matches!(session.status, SessionStatus::Idle | SessionStatus::Failed)
@@ -440,6 +456,10 @@ fn fitted_panel_widths(
 enum RightPanelSurface {
     Browser(Uuid),
     Terminal(Uuid),
+    BackgroundWork {
+        key: BackgroundWorkKey,
+        title: String,
+    },
     Files,
     Diff,
     File(String),
@@ -472,6 +492,7 @@ struct PreparedSubmission {
 struct DriverStartRequest {
     provider: ProviderKind,
     options: DriverStartOptions,
+    event_wake: smol::channel::Sender<()>,
 }
 
 /// A provider process that has started off-thread but is not installed into
@@ -479,6 +500,13 @@ struct DriverStartRequest {
 struct PreparedDriver {
     handle: DriverHandle,
     events: Receiver<DriverEvent>,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum EventPumpSchedule {
+    Idle,
+    StreamFrame,
+    BackgroundOutput(Duration),
 }
 
 struct RightPanelFileEditor {
@@ -629,6 +657,9 @@ struct SessionRuntime {
     last_driver_error: Option<String>,
     /// When this session last sent or received anything, for idle reaping.
     last_active_at: Instant,
+    /// Background-process snapshots are provider IPC. Keep the polling clock
+    /// on the runtime so switching tasks never creates duplicate probes.
+    last_background_refresh_at: Instant,
 }
 
 #[derive(Debug, Default)]
@@ -813,6 +844,9 @@ pub struct Waku {
     /// flicker when app activation invalidates the query.
     visible_branch_snapshot: Option<(PathBuf, BranchSnapshot)>,
     branch_operation_pending: bool,
+    /// Window-modal Git commit/push flow. Its snapshot and pending state are
+    /// filled off-thread; frames only read this in-memory value.
+    commit_dialog: Option<commit_dialog::CommitDialogState>,
     /// Slash commands discovered per (provider, project root). Filesystem
     /// walks live on the background executor; frames read the index below.
     slash_commands: QueryCache<(ProviderKind, PathBuf), Vec<SlashCommand>>,
@@ -832,7 +866,15 @@ pub struct Waku {
     /// Files dropped onto the composer, drawn as chips above the input and
     /// drained into the next submission.
     composer_attachments: Vec<ComposerAttachment>,
+    /// Coalesced edge trigger for provider and background result queues. The
+    /// payloads stay in their typed channels; this channel only wakes the UI.
+    event_wake_tx: smol::channel::Sender<()>,
     runtimes: HashMap<Uuid, SessionRuntime>,
+    /// Provider-neutral session work which may remain live after a turn ends.
+    /// Runtime-only by design: providers reconcile their authoritative state
+    /// when the resident transport reconnects.
+    background_work: HashMap<Uuid, BackgroundWorkRegistry>,
+    last_background_work_tick: Instant,
     /// Accepted submissions still creating their workspace/checkpoint, or an
     /// edited past message still rewinding its workspace and provider. The
     /// session is busy immediately, while the composer draws a spinner until
@@ -844,9 +886,10 @@ pub struct Waku {
     /// its resident session while producing a branch.
     response_fork_preparations: HashMap<Uuid, usize>,
     /// Sessions whose just-settled turn should start the next queued
-    /// follow-up. Processed at the end of the driver-event drain so the
-    /// session's runtime has already been re-inserted before a new prompt
-    /// reuses it.
+    /// follow-up. The request stays here until the ending checkpoint lands, so
+    /// the next provider cannot edit the worktree while that snapshot is still
+    /// being collected; it then reuses the runtime after the event drain has
+    /// re-inserted it.
     pending_queue_drains: Vec<Uuid>,
     stream_state_dirty: bool,
     last_stream_save: Instant,
@@ -1040,6 +1083,10 @@ pub struct Waku {
     message_markdown: RefCell<HashMap<Uuid, MarkdownView>>,
     /// Parsed markdown for reasoning blocks, keyed by transcript block index.
     block_markdown: RefCell<HashMap<usize, MarkdownView>>,
+    /// One allocation for every transcript markdown context to share. The
+    /// callback knows about the active workspace; the renderer deliberately
+    /// does not.
+    markdown_link_handler: md::render::LinkHandler,
     /// Transcript-wide text selection, spanning messages and tool output.
     transcript_selection: TranscriptSelection,
     /// Independent selection for the transient toast message. Keeping it out
@@ -1064,8 +1111,10 @@ pub struct Waku {
 }
 
 mod autocomplete;
+mod background_work;
 mod branches;
 mod command_palette;
+mod commit_dialog;
 mod components;
 mod composer;
 mod drafts;
@@ -1084,7 +1133,11 @@ mod usage_meter;
 mod usage_page;
 
 pub use autocomplete::init as init_composer_autocomplete;
+use background_work::{
+    BackgroundWorkRegistry, work_kind_icon, work_status_color, work_status_label,
+};
 pub use command_palette::init as init_command_palette;
+pub use commit_dialog::init as init_commit_dialog_keys;
 use components::*;
 pub use settings::init as init_settings_keys;
 pub use sidebar::init as init_sidebar_keys;
@@ -1450,14 +1503,18 @@ impl Waku {
         let (provider_detection_tx, provider_detection_events) = unbounded();
         let (computer_permission_tx, computer_permission_events) = unbounded();
         let (plan_usage_tx, plan_usage_events) = unbounded();
+        let (event_wake_tx, event_wake_events) = smol::channel::bounded(1);
         {
             let computer_permission_tx = computer_permission_tx.clone();
+            let event_wake = event_wake_tx.clone();
             std::thread::Builder::new()
                 .name("waku-computer-permission-probe".into())
                 .spawn(move || {
                     let result = crate::computer_use::probe_permissions(false)
                         .map_err(|error| error.to_string());
-                    let _ = computer_permission_tx.send(result);
+                    if computer_permission_tx.send(result).is_ok() {
+                        signal_event_pump(&event_wake);
+                    }
                 })
                 .ok();
         }
@@ -1745,37 +1802,54 @@ impl Waku {
             )
             .detach();
 
+            // Like T3 Code's adapter subscriptions feeding its ingestion
+            // worker, provider threads push an edge into this bounded wake
+            // channel. The UI does no standing scan: 24 ms pacing exists only
+            // while a streamed response still has presentation work queued.
+            cx.spawn(async move |this, cx| {
+                while event_wake_events.recv().await.is_ok() {
+                    loop {
+                        // The typed queues are drained below, so all wake edges
+                        // already represented by those payloads can coalesce.
+                        while event_wake_events.try_recv().is_ok() {}
+                        let schedule = match this.update(cx, |this, cx| this.drain_event_pump(cx)) {
+                            Ok(schedule) => schedule,
+                            Err(_) => return,
+                        };
+                        match schedule {
+                            EventPumpSchedule::Idle => break,
+                            EventPumpSchedule::StreamFrame => {
+                                cx.background_executor().timer(STREAM_FRAME_INTERVAL).await;
+                            }
+                            EventPumpSchedule::BackgroundOutput(delay) => {
+                                // A log cache has its own 100 ms batching
+                                // cadence. A new provider edge interrupts that
+                                // wait; it must not wait behind log rendering.
+                                futures_lite::future::race(
+                                    async {
+                                        let _ = event_wake_events.recv().await;
+                                    },
+                                    async {
+                                        cx.background_executor().timer(delay).await;
+                                    },
+                                )
+                                .await;
+                            }
+                        }
+                    }
+                }
+            })
+            .detach();
+
+            // Maintenance clocks are intentionally independent of provider
+            // ingestion and run at the slowest cadence their UI requires.
             cx.spawn(async move |this, cx| {
                 loop {
-                    cx.background_executor().timer(STREAM_FRAME_INTERVAL).await;
+                    cx.background_executor()
+                        .timer(BACKGROUND_WORK_TICK_INTERVAL)
+                        .await;
                     if this
-                        .update(cx, |this, cx| {
-                            // `|` on purpose: every drain runs every tick. A
-                            // short-circuit would let a busy stream (whose
-                            // drain reports a change each tick) starve the
-                            // later queues for as long as it runs.
-                            if this.drain_driver_events(cx)
-                                | this.drain_provider_probe_events()
-                                | this.drain_provider_version_events()
-                                | this.drain_provider_detection_events()
-                                | this.drain_computer_permission_events()
-                                | this.drain_plan_usage_events()
-                            {
-                                cx.notify();
-                            }
-                            this.maybe_refresh_plan_usage(cx);
-                            if std::mem::take(&mut this.workspace_queries_stale) {
-                                this.invalidate_workspace_queries(cx);
-                            }
-                            if std::mem::take(&mut this.composer_sources_stale) {
-                                this.refresh_composer_sources(cx);
-                            }
-                            this.reap_idle_sessions();
-                            // A finished turn asks for a checkpoint from a
-                            // handler with no `Context`; this is where that
-                            // `git` work actually leaves the UI thread.
-                            this.start_pending_checkpoint_captures(cx);
-                        })
+                        .update(cx, |this, cx| this.maybe_refresh_background_work(cx))
                         .is_err()
                     {
                         break;
@@ -1783,6 +1857,48 @@ impl Waku {
                 }
             })
             .detach();
+
+            cx.spawn(async move |this, cx| {
+                loop {
+                    if this
+                        .update(cx, |this, cx| this.maybe_refresh_plan_usage(cx))
+                        .is_err()
+                    {
+                        break;
+                    }
+                    cx.background_executor()
+                        .timer(PLAN_USAGE_MAINTENANCE_INTERVAL)
+                        .await;
+                }
+            })
+            .detach();
+
+            cx.spawn(async move |this, cx| {
+                loop {
+                    cx.background_executor()
+                        .timer(IDLE_SESSION_SWEEP_INTERVAL)
+                        .await;
+                    if this
+                        .update(cx, |this, _| this.reap_idle_sessions())
+                        .is_err()
+                    {
+                        break;
+                    }
+                }
+            })
+            .detach();
+
+            let markdown_link_handler: md::render::LinkHandler = {
+                let waku = cx.entity().downgrade();
+                Rc::new(move |target, _, cx| {
+                    let handled = waku
+                        .update(cx, |waku, cx| waku.open_transcript_link(target, cx))
+                        .unwrap_or(false);
+                    if !handled {
+                        cx.open_url(target);
+                    }
+                })
+            };
 
             Self {
                 state,
@@ -1865,6 +1981,7 @@ impl Waku {
                 branch_snapshots: QueryCache::new(MAX_CACHED_WORKSPACES),
                 visible_branch_snapshot: None,
                 branch_operation_pending: false,
+                commit_dialog: None,
                 // Providers × workspaces; both scans are small, the cache
                 // only exists to keep them off the frame path.
                 slash_commands: QueryCache::new(2 * MAX_CACHED_WORKSPACES),
@@ -1876,7 +1993,10 @@ impl Waku {
                 composer_sources_stale: false,
                 composer_autocomplete: autocomplete::AutocompleteUi::new(),
                 composer_attachments,
+                event_wake_tx,
                 runtimes: HashMap::new(),
+                background_work: HashMap::new(),
+                last_background_work_tick: Instant::now(),
                 submission_preparations: HashSet::new(),
                 response_fork_preparations: HashMap::new(),
                 pending_queue_drains: Vec::new(),
@@ -1992,6 +2112,7 @@ impl Waku {
                 transcript_layout_width: Cell::new(Pixels::ZERO),
                 message_markdown: RefCell::new(HashMap::new()),
                 block_markdown: RefCell::new(HashMap::new()),
+                markdown_link_handler,
                 transcript_selection: TranscriptSelection::default(),
                 toast_selection: TranscriptSelection::default(),
                 transcript_scrollbar: ScrollbarState::new(),

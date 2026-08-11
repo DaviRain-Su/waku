@@ -17,6 +17,157 @@ pub(super) struct WorkingTreeEntry {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
+enum TranscriptLinkRoute {
+    ProjectFile(String),
+    Finder(PathBuf),
+    External,
+}
+
+fn positive_number(value: &str) -> bool {
+    !value.is_empty()
+        && value.bytes().all(|byte| byte.is_ascii_digit())
+        && value.parse::<usize>().is_ok_and(|value| value > 0)
+}
+
+fn line_fragment(fragment: &str) -> bool {
+    let Some(location) = fragment.strip_prefix('L') else {
+        return false;
+    };
+    match location.split_once('C') {
+        Some((line, column)) => positive_number(line) && positive_number(column),
+        None => positive_number(location),
+    }
+}
+
+/// Removes the `:line`, `:line:column`, or `#LlineCcolumn` suffixes Codex uses
+/// in clickable local-file references. The location is not yet consumed by
+/// Waku's compact editor, but it must not become part of the filesystem path.
+fn strip_file_location(target: &str) -> &str {
+    if let Some((path, fragment)) = target.rsplit_once('#')
+        && line_fragment(fragment)
+    {
+        return path;
+    }
+
+    let Some((before_last, last)) = target.rsplit_once(':') else {
+        return target;
+    };
+    if !positive_number(last) {
+        return target;
+    }
+    if let Some((path, line)) = before_last.rsplit_once(':')
+        && positive_number(line)
+    {
+        path
+    } else {
+        before_last
+    }
+}
+
+fn hex_value(byte: u8) -> Option<u8> {
+    match byte {
+        b'0'..=b'9' => Some(byte - b'0'),
+        b'a'..=b'f' => Some(byte - b'a' + 10),
+        b'A'..=b'F' => Some(byte - b'A' + 10),
+        _ => None,
+    }
+}
+
+fn percent_decode_file_path(path: &str) -> String {
+    let bytes = path.as_bytes();
+    let mut decoded = Vec::with_capacity(bytes.len());
+    let mut index = 0;
+    while index < bytes.len() {
+        if bytes[index] == b'%'
+            && let (Some(high), Some(low)) = (
+                bytes.get(index + 1).copied().and_then(hex_value),
+                bytes.get(index + 2).copied().and_then(hex_value),
+            )
+        {
+            decoded.push(high << 4 | low);
+            index += 3;
+        } else {
+            decoded.push(bytes[index]);
+            index += 1;
+        }
+    }
+    String::from_utf8(decoded).unwrap_or_else(|_| path.to_owned())
+}
+
+fn markdown_file_link_path(target: &str) -> Option<PathBuf> {
+    let target = strip_file_location(target.trim());
+    let path = if target.starts_with('/') {
+        target
+    } else if let Some(path) = target.strip_prefix("file://") {
+        if path.starts_with('/') {
+            path
+        } else if let Some(path) = path.strip_prefix("localhost")
+            && path.starts_with('/')
+        {
+            path
+        } else {
+            return None;
+        }
+    } else if let Some(path) = target.strip_prefix("file:")
+        && path.starts_with('/')
+    {
+        path
+    } else {
+        return None;
+    };
+    let path = PathBuf::from(percent_decode_file_path(path));
+    path.is_absolute().then_some(path)
+}
+
+fn normalized_path(path: &Path) -> PathBuf {
+    let mut normalized = PathBuf::new();
+    for component in path.components() {
+        match component {
+            std::path::Component::CurDir => {}
+            std::path::Component::ParentDir => {
+                normalized.pop();
+            }
+            component => normalized.push(component.as_os_str()),
+        }
+    }
+    normalized
+}
+
+fn workspace_relative_file_path(workspace: &Path, target: &Path) -> Option<String> {
+    fn relative(workspace: &Path, target: &Path) -> Option<String> {
+        let relative = target.strip_prefix(workspace).ok()?;
+        if relative.as_os_str().is_empty() {
+            return None;
+        }
+        Some(relative.to_string_lossy().into_owned())
+    }
+
+    let workspace = normalized_path(workspace);
+    let target = normalized_path(target);
+    match (
+        std::fs::canonicalize(&workspace),
+        std::fs::canonicalize(&target),
+    ) {
+        (Ok(workspace), Ok(target)) => relative(&workspace, &target),
+        _ => relative(&workspace, &target),
+    }
+}
+
+fn transcript_link_route(target: &str, workspace: Option<&Path>) -> TranscriptLinkRoute {
+    let Some(path) = markdown_file_link_path(target) else {
+        return TranscriptLinkRoute::External;
+    };
+    let path = normalized_path(&path);
+    if let Some(relative_path) =
+        workspace.and_then(|workspace| workspace_relative_file_path(workspace, &path))
+    {
+        TranscriptLinkRoute::ProjectFile(relative_path)
+    } else {
+        TranscriptLinkRoute::Finder(path)
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub(super) enum ReviewDiffTreeRow {
     Directory {
         path: String,
@@ -533,7 +684,7 @@ impl RightPanelSurface {
         Self::Browser(Uuid::new_v4())
     }
 
-    fn new_terminal() -> Self {
+    pub(super) fn new_terminal() -> Self {
         Self::Terminal(Uuid::new_v4())
     }
 
@@ -555,6 +706,17 @@ impl RightPanelSurface {
         match self {
             Self::Browser(_) => tr!("right_panel.browser"),
             Self::Terminal(_) => tr!("right_panel.terminal"),
+            Self::BackgroundWork { key, title } => {
+                if title.is_empty() {
+                    match key.kind {
+                        BackgroundWorkKind::Process => tr!("background.process"),
+                        BackgroundWorkKind::Monitor => tr!("background.monitor"),
+                        BackgroundWorkKind::Subagent => tr!("background.subagent"),
+                    }
+                } else {
+                    title.clone()
+                }
+            }
             Self::Files => tr!("right_panel.files"),
             Self::Diff => tr!("right_panel.diff"),
             Self::File(path) => path.rsplit('/').next().unwrap_or(path).to_owned(),
@@ -565,6 +727,7 @@ impl RightPanelSurface {
         match self {
             Self::Browser(_) => "icons/globe.svg",
             Self::Terminal(_) => "icons/terminal.svg",
+            Self::BackgroundWork { key, .. } => work_kind_icon(key.kind),
             Self::Files => "icons/folder.svg",
             Self::Diff => "icons/file-diff.svg",
             Self::File(path) => file_icon_for_path(path),
@@ -602,6 +765,9 @@ fn reusable_surface_index(
 ) -> Option<usize> {
     match requested {
         RightPanelSurface::Browser(_) | RightPanelSurface::Terminal(_) => None,
+        RightPanelSurface::BackgroundWork { key, .. } => surfaces.iter().position(|surface| {
+            matches!(surface, RightPanelSurface::BackgroundWork { key: candidate, .. } if candidate == key)
+        }),
         RightPanelSurface::Files | RightPanelSurface::Diff | RightPanelSurface::File(_) => {
             surfaces.iter().position(|surface| surface == requested)
         }
@@ -730,6 +896,44 @@ fn tab_scroll_fade(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn transcript_file_links_route_by_the_active_workspace() {
+        let workspace = Path::new("/Users/egoist/dev/waku");
+
+        assert_eq!(
+            transcript_link_route(
+                "/Users/egoist/dev/waku/src/app/right_panel.rs:1596",
+                Some(workspace),
+            ),
+            TranscriptLinkRoute::ProjectFile("src/app/right_panel.rs".into())
+        );
+        assert_eq!(
+            transcript_link_route(
+                "/Users/egoist/dev/waku/src/app/right_panel.rs:1596:8",
+                Some(workspace),
+            ),
+            TranscriptLinkRoute::ProjectFile("src/app/right_panel.rs".into())
+        );
+        assert_eq!(
+            transcript_link_route(
+                "file:///Users/egoist/dev/waku/My%20File.rs#L12C4",
+                Some(workspace),
+            ),
+            TranscriptLinkRoute::ProjectFile("My File.rs".into())
+        );
+        assert_eq!(
+            transcript_link_route(
+                "/Users/egoist/dev/waku/../kero/src/app.rs:20",
+                Some(workspace),
+            ),
+            TranscriptLinkRoute::Finder(PathBuf::from("/Users/egoist/dev/kero/src/app.rs"))
+        );
+        assert_eq!(
+            transcript_link_route("https://example.com/file.rs:12", Some(workspace)),
+            TranscriptLinkRoute::External
+        );
+    }
 
     fn review_file(path: &str) -> crate::review_diff::File {
         crate::review_diff::File {
@@ -1140,9 +1344,14 @@ mod tests {
     fn only_reuses_single_instance_surface_tabs() {
         let browser = RightPanelSurface::new_browser();
         let terminal = RightPanelSurface::new_terminal();
+        let background = RightPanelSurface::BackgroundWork {
+            key: BackgroundWorkKey::new(BackgroundWorkKind::Process, "process-1"),
+            title: "Process one".into(),
+        };
         let surfaces = vec![
             browser,
             terminal,
+            background,
             RightPanelSurface::Files,
             RightPanelSurface::Diff,
         ];
@@ -1156,12 +1365,22 @@ mod tests {
             None
         );
         assert_eq!(
-            reusable_surface_index(&surfaces, &RightPanelSurface::Files),
+            reusable_surface_index(
+                &surfaces,
+                &RightPanelSurface::BackgroundWork {
+                    key: BackgroundWorkKey::new(BackgroundWorkKind::Process, "process-1"),
+                    title: "Renamed process".into(),
+                },
+            ),
             Some(2)
         );
         assert_eq!(
-            reusable_surface_index(&surfaces, &RightPanelSurface::Diff),
+            reusable_surface_index(&surfaces, &RightPanelSurface::Files),
             Some(3)
+        );
+        assert_eq!(
+            reusable_surface_index(&surfaces, &RightPanelSurface::Diff),
+            Some(4)
         );
     }
 
@@ -1242,6 +1461,18 @@ mod tests {
 }
 
 impl Waku {
+    pub(super) fn open_transcript_link(&mut self, target: &str, cx: &mut Context<Self>) -> bool {
+        match transcript_link_route(target, self.selected_workspace_path()) {
+            TranscriptLinkRoute::ProjectFile(relative_path) => {
+                self.open_right_panel_surface(RightPanelSurface::Files, cx);
+                self.open_right_panel_file(relative_path, cx);
+            }
+            TranscriptLinkRoute::Finder(path) => crate::platform::reveal_in_finder(&path),
+            TranscriptLinkRoute::External => return false,
+        }
+        true
+    }
+
     pub(super) fn store_selected_right_panel_state(&mut self) {
         let Some(session_id) = self.state.selected_session else {
             return;
@@ -1416,7 +1647,11 @@ impl Waku {
         }
     }
 
-    fn open_right_panel_surface(&mut self, surface: RightPanelSurface, cx: &mut Context<Self>) {
+    pub(super) fn open_right_panel_surface(
+        &mut self,
+        surface: RightPanelSurface,
+        cx: &mut Context<Self>,
+    ) {
         let reusable_index = reusable_surface_index(&self.right_panel_surfaces, &surface);
         if matches!(&surface, RightPanelSurface::File(_)) {
             self.ensure_initial_right_panel_file_editor_width();
@@ -1559,6 +1794,7 @@ impl Waku {
             self.right_panel_pending_tab_reveal = None;
             self.right_panel_pending_terminal_focus = None;
             self.right_panel_pending_browser_focus = None;
+            self.set_right_panel_visible(false, cx);
         }
         cx.notify();
     }
@@ -1625,6 +1861,9 @@ impl Waku {
         }
         let body = match self.active_right_panel_surface().cloned() {
             None => self.render_right_panel_chooser(cx).into_any_element(),
+            Some(RightPanelSurface::BackgroundWork { key, .. }) => self
+                .render_background_work_surface(&key, cx)
+                .into_any_element(),
             Some(RightPanelSurface::Files) => self
                 .render_right_panel_files(width, window, cx)
                 .into_any_element(),
@@ -1725,6 +1964,7 @@ impl Waku {
     fn any_overlay_open(&self, cx: &App) -> bool {
         self.menus.borrow().values().any(ContextMenuHandle::is_open)
             || self.command_palette.is_open()
+            || self.commit_dialog.is_some()
             || self.composer.read(cx).context_menu_open()
             || self
                 .right_panel_browsers
@@ -3738,7 +3978,11 @@ impl Waku {
         }
     }
 
-    fn set_right_panel_diff_source(&mut self, source: ReviewDiffSource, cx: &mut Context<Self>) {
+    pub(super) fn set_right_panel_diff_source(
+        &mut self,
+        source: ReviewDiffSource,
+        cx: &mut Context<Self>,
+    ) {
         if self.right_panel_diff_source != source {
             self.right_panel_diff_selection.clear();
             self.right_panel_diff_source = source;
@@ -3751,7 +3995,7 @@ impl Waku {
             self.right_panel_diff_tree_list_state.reset(0);
             self.right_panel_diff_list_state.reset(0);
         }
-        self.refresh_right_panel_diff(cx);
+        self.open_right_panel_surface(RightPanelSurface::Diff, cx);
     }
 
     /// Captures one stable Git range and turns it into render-ready rows. Git,

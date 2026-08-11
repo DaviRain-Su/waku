@@ -11,10 +11,61 @@ mod support;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use crossbeam_channel::Sender;
+use crossbeam_channel::{Receiver, SendError, Sender, unbounded};
 
 use crate::computer_use::ComputerToolRequest;
-use crate::model::{DriverEvent, InteractionMode, ProviderKind, ProviderResumeCursor, RuntimeMode};
+use crate::model::{
+    BackgroundWorkKey, DriverEvent, InteractionMode, ProviderKind, ProviderResumeCursor,
+    RuntimeMode,
+};
+
+/// Provider events remain synchronous to send from reader threads, while the
+/// bounded wake channel lets the UI sleep until at least one event is ready.
+/// Multiple provider writes coalesce into one wake without ever blocking the
+/// provider or dropping the events themselves.
+#[derive(Clone)]
+pub struct DriverEventSender {
+    events: Sender<DriverEvent>,
+    wake: smol::channel::Sender<()>,
+}
+
+impl DriverEventSender {
+    pub(crate) fn send(&self, event: DriverEvent) -> Result<(), SendError<DriverEvent>> {
+        self.events.send(event)?;
+        let _ = self.wake.try_send(());
+        Ok(())
+    }
+}
+
+pub(crate) trait DriverEventSink {
+    fn send(&self, event: DriverEvent) -> Result<(), SendError<DriverEvent>>;
+}
+
+impl DriverEventSink for DriverEventSender {
+    fn send(&self, event: DriverEvent) -> Result<(), SendError<DriverEvent>> {
+        DriverEventSender::send(self, event)
+    }
+}
+
+#[cfg(test)]
+impl DriverEventSink for Sender<DriverEvent> {
+    fn send(&self, event: DriverEvent) -> Result<(), SendError<DriverEvent>> {
+        Sender::send(self, event)
+    }
+}
+
+pub(crate) fn event_channel(
+    wake: smol::channel::Sender<()>,
+) -> (DriverEventSender, Receiver<DriverEvent>) {
+    let (events, receiver) = unbounded();
+    (DriverEventSender { events, wake }, receiver)
+}
+
+#[cfg(test)]
+pub(crate) fn test_event_channel() -> (DriverEventSender, Receiver<DriverEvent>) {
+    let (wake, _wakes) = smol::channel::bounded(1);
+    event_channel(wake)
+}
 
 #[derive(Clone)]
 pub struct DriverHandle {
@@ -42,6 +93,14 @@ impl DriverHandle {
 
     pub fn cancel_computer_use(&self) {
         self.inner.cancel_computer_use();
+    }
+
+    pub fn refresh_background_work(&self) {
+        self.inner.refresh_background_work();
+    }
+
+    pub fn stop_background_work(&self, key: BackgroundWorkKey, control_id: String) {
+        self.inner.stop_background_work(key, control_id);
     }
 
     pub fn respond(&self, request_id: String, option_id: String) {
@@ -80,6 +139,8 @@ pub trait DriverControl: Send + Sync {
     fn steer(&self, _prompt: String) {}
     fn cancel(&self);
     fn cancel_computer_use(&self) {}
+    fn refresh_background_work(&self) {}
+    fn stop_background_work(&self, _key: BackgroundWorkKey, _control_id: String) {}
     fn respond(&self, request_id: String, option_id: String);
     fn run_computer_tool(&self, _request: ComputerToolRequest) {}
     fn reject_computer_tool(&self, _request: ComputerToolRequest, _reason: String) {}
@@ -122,7 +183,7 @@ pub struct SessionOptions {
 pub fn start(
     provider: ProviderKind,
     options: DriverStartOptions,
-    events: Sender<DriverEvent>,
+    events: DriverEventSender,
 ) -> anyhow::Result<DriverHandle> {
     let inner: Arc<dyn DriverControl> = match provider {
         ProviderKind::Codex => Arc::new(codex::CodexDriver::start(options, events)?),
@@ -145,4 +206,26 @@ pub fn start(
         ProviderKind::Amp => Arc::new(amp::AmpDriver::start(options, events)?),
     };
     Ok(DriverHandle { inner })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn provider_events_coalesce_wakes_without_dropping_payloads() {
+        let (wake, wakes) = smol::channel::bounded(1);
+        let (events, received) = event_channel(wake);
+
+        events.send(DriverEvent::TextDelta("one".into())).unwrap();
+        events.send(DriverEvent::TextDelta("two".into())).unwrap();
+
+        assert_eq!(wakes.try_recv(), Ok(()));
+        assert!(matches!(
+            wakes.try_recv(),
+            Err(smol::channel::TryRecvError::Empty)
+        ));
+        assert!(matches!(received.try_recv(), Ok(DriverEvent::TextDelta(text)) if text == "one"));
+        assert!(matches!(received.try_recv(), Ok(DriverEvent::TextDelta(text)) if text == "two"));
+    }
 }

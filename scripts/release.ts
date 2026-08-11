@@ -19,7 +19,6 @@ const executableName = "Waku";
 const jsReplExecutableName = "waku_js_repl";
 const computerUseHelperName = "Waku Computer Use";
 const packageName = "waku";
-const defaultSigningIdentity = "GJE9R5VE87";
 const defaultNotaryProfile = "NOTARY";
 const projectRoot = resolve(import.meta.dir, "..");
 
@@ -38,7 +37,7 @@ Options:
   --force                       Publish even if this version is already in R2
   --output <path>               DMG output path (default: dist/Waku-<version>.dmg)
   --signing-identity <name>     Developer ID Application identity selector
-                                (default: GJE9R5VE87; or WAKU_SIGNING_IDENTITY)
+                                (or WAKU_SIGNING_IDENTITY; required unless --adhoc)
   --notary-profile <name>       notarytool keychain profile
                                 (default: NOTARY; or WAKU_NOTARY_PROFILE)
   --build-number <number>       CFBundleVersion override (or WAKU_BUILD_NUMBER;
@@ -132,8 +131,6 @@ const adhoc = values.adhoc ?? false;
 const skipNotarize = values["skip-notarize"] ?? false;
 const configuredSigningIdentity =
   values["signing-identity"] ?? process.env.WAKU_SIGNING_IDENTITY;
-const signingIdentity =
-  configuredSigningIdentity ?? defaultSigningIdentity;
 const notaryProfile =
   values["notary-profile"] ??
   process.env.WAKU_NOTARY_PROFILE ??
@@ -159,6 +156,11 @@ const skipHistory = process.env.WAKU_NO_HISTORY === "1";
 
 if (adhoc && configuredSigningIdentity) {
   throw new Error("Use either --adhoc or --signing-identity, not both.");
+}
+if (!adhoc && !configuredSigningIdentity) {
+  throw new Error(
+    "Set WAKU_SIGNING_IDENTITY or pass --signing-identity (or use --adhoc).",
+  );
 }
 if (explicitBuildNumber && !/^\d+(?:\.\d+){0,2}$/.test(explicitBuildNumber)) {
   throw new Error(
@@ -364,7 +366,7 @@ if (
 let temporaryDirectory: string | undefined;
 let mountedDmg = false;
 let mountDirectory: string | undefined;
-const identity = adhoc ? "-" : signingIdentity!;
+const identity = adhoc ? "-" : configuredSigningIdentity!;
 
 try {
   if (values["skip-build"]) {

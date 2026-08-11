@@ -68,12 +68,13 @@ words, don't do it casually.
 
 ### 2. Developer ID signing + notarization
 
-Set `WAKU_SIGNING_IDENTITY` to your Apple team ID so the script can select the
-Developer ID Application certificate. It notarizes with the `NOTARY` keychain
-profile by default. On a fresh machine:
+Copy `.env.example` to `.env` and replace the signing and analytics
+placeholders. Bun loads these values before Cargo compiles the release, so the
+analytics endpoint and website ID are embedded in the executable. The script
+notarizes with the `NOTARY` keychain profile by default. On a fresh machine:
 
 ```sh
-export WAKU_SIGNING_IDENTITY=YOUR_APPLE_TEAM_ID
+cp .env.example .env
 xcrun notarytool store-credentials NOTARY \
   --apple-id you@example.com --team-id YOUR_APPLE_TEAM_ID
 ```

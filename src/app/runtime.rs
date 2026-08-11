@@ -1241,7 +1241,7 @@ impl Waku {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        let Some((message_index, initial_message)) = self
+        let Some((message_index, initial_message, attachments)) = self
             .state
             .sessions
             .iter()
@@ -1261,7 +1261,13 @@ impl Waku {
                     .enumerate()
                     .find_map(|(index, message)| {
                         (message.turn_id == Some(turn.id) && message.role == MessageRole::User)
-                            .then(|| (index, message.content.clone()))
+                            .then(|| {
+                                (
+                                    index,
+                                    message.visible_content().to_owned(),
+                                    message.attachments.clone(),
+                                )
+                            })
                     })
             })
         else {
@@ -1293,6 +1299,7 @@ impl Waku {
             session_id,
             turn_count,
             input: input.clone(),
+            attachments,
         });
         self.hide_toast();
         self.remeasure_transcript_message(message_index);
@@ -1350,15 +1357,36 @@ impl Waku {
         // Use the event's captured value rather than rereading the field; the
         // button path enters here with its own pre-clear content as well.
         let prompt = prompt.trim().to_owned();
-        if prompt.is_empty() {
+        if prompt.is_empty() && edit.attachments.is_empty() {
             self.show_toast(tr!("session.edited_message_empty"));
             cx.notify();
             return;
         }
-        self.start_message_rewind(edit, prompt, cx);
+        let mentions = edit
+            .attachments
+            .iter()
+            .map(|attachment| attachment.mention.clone())
+            .collect::<Vec<_>>();
+        let provider_prompt = composer::merged_submission(&prompt, &mentions)
+            .expect("edited text or retained attachments always form a submission");
+        let display_content = (!edit.attachments.is_empty()).then_some(prompt);
+        self.start_message_rewind(
+            edit.clone(),
+            ComposerSubmission {
+                prompt: provider_prompt,
+                display_content,
+                attachments: edit.attachments,
+            },
+            cx,
+        );
     }
 
-    fn start_message_rewind(&mut self, edit: MessageEdit, prompt: String, cx: &mut Context<Self>) {
+    fn start_message_rewind(
+        &mut self,
+        edit: MessageEdit,
+        submission: ComposerSubmission,
+        cx: &mut Context<Self>,
+    ) {
         let session_id = edit.session_id;
         let turn_count = edit.turn_count;
         let retained_turn_count = turn_count.saturating_sub(1);
@@ -1503,17 +1531,20 @@ impl Waku {
         // spinner while every Git, process, native transcript, and provider
         // operation runs off the UI thread. Failure restores both the original
         // bubble and this edit input.
-        let original_message_content = self.state.session_mut(session_id).and_then(|session| {
+        let original_message = self.state.session_mut(session_id).and_then(|session| {
             let message = session
                 .messages
                 .iter_mut()
                 .find(|message| message.id == edited_message_id)?;
-            let original = std::mem::replace(&mut message.content, prompt.clone());
+            let original = message.clone();
+            message.content = submission.prompt.clone();
+            message.display_content = submission.display_content.clone();
+            message.attachments = submission.attachments.clone();
             session.status = SessionStatus::Connecting;
             session.updated_at = unix_time();
             Some(original)
         });
-        let Some(original_message_content) = original_message_content else {
+        let Some(original_message) = original_message else {
             self.show_toast(tr!("session.message_unavailable"));
             cx.notify();
             return;
@@ -1532,9 +1563,9 @@ impl Waku {
             let _ = waku.update(cx, move |waku, cx| {
                 waku.finish_message_rewind(
                     edit,
-                    prompt,
+                    submission,
                     edited_message_id,
-                    original_message_content,
+                    original_message,
                     previous_status,
                     result,
                     cx,
@@ -1547,9 +1578,9 @@ impl Waku {
     fn finish_message_rewind(
         &mut self,
         edit: MessageEdit,
-        prompt: String,
+        submission: ComposerSubmission,
         edited_message_id: Uuid,
-        original_message_content: String,
+        original_message: Message,
         previous_status: SessionStatus,
         result: Result<PreparedMessageRewind, String>,
         cx: &mut Context<Self>,
@@ -1569,7 +1600,7 @@ impl Waku {
                         .iter_mut()
                         .find(|message| message.id == edited_message_id)
                     {
-                        message.content = original_message_content;
+                        *message = original_message;
                     }
                     if session.status == SessionStatus::Connecting {
                         session.status = previous_status;
@@ -1706,7 +1737,7 @@ impl Waku {
             });
         }
         cx.notify();
-        self.submit_prompt_for_session(session_id, prompt, cx);
+        self.submit_submission_for_session(session_id, submission, cx);
     }
 
     /// Resolves the turn options a driver should run with, dropping a reasoning
@@ -1849,6 +1880,7 @@ impl Waku {
                 driver: prepared.handle,
                 events: prepared.events,
                 pending_events: VecDeque::new(),
+                pending_steers: VecDeque::new(),
                 stream_phase: None,
                 stream_remeasure_pending: false,
                 pending_permission: None,
@@ -1862,7 +1894,11 @@ impl Waku {
         handle
     }
 
-    pub(super) fn submit_prompt(&mut self, prompt: String, cx: &mut Context<Self>) {
+    pub(super) fn submit_composer_submission(
+        &mut self,
+        submission: ComposerSubmission,
+        cx: &mut Context<Self>,
+    ) {
         let Some(session) = self.selected_session() else {
             return;
         };
@@ -1872,21 +1908,25 @@ impl Waku {
         if session.is_busy() {
             // While the agent is working, Enter queues a follow-up instead of
             // refusing the message. The queue drains once the turn settles.
-            self.enqueue_follow_up(session.id, prompt, cx);
+            self.enqueue_follow_up_submission(session.id, submission, cx);
             return;
         }
-        self.submit_prompt_for_session(session.id, prompt, cx);
+        self.submit_submission_for_session(session.id, submission, cx);
     }
 
     /// Deliver a steering message into the running turn. Providers without a
     /// live-turn transport (or a session that is not actively working) fall
     /// back to queueing a follow-up.
-    pub(super) fn steer_prompt(&mut self, prompt: String, cx: &mut Context<Self>) {
+    pub(super) fn steer_composer_submission(
+        &mut self,
+        submission: ComposerSubmission,
+        cx: &mut Context<Self>,
+    ) {
         let Some(session) = self.selected_session().cloned() else {
             return;
         };
         if !session.is_busy() {
-            self.submit_prompt(prompt, cx);
+            self.submit_composer_submission(submission, cx);
             return;
         }
         // A turn that has not reached the provider yet cannot be steered; the
@@ -1898,29 +1938,32 @@ impl Waku {
                 .get(&session.id)
                 .is_some_and(|runtime| runtime.driver.supports_steer());
         if !steerable {
-            self.enqueue_follow_up(session.id, prompt, cx);
+            self.enqueue_follow_up_submission(session.id, submission, cx);
             return;
         }
         if let Some(runtime) = self.runtimes.get_mut(&session.id) {
-            runtime.driver.steer(prompt);
+            runtime.driver.steer(submission.prompt.clone());
+            runtime.pending_steers.push_back(submission);
         } else {
-            self.enqueue_follow_up(session.id, prompt, cx);
+            self.enqueue_follow_up_submission(session.id, submission, cx);
         }
         cx.notify();
     }
 
-    pub(super) fn enqueue_follow_up(
+    pub(super) fn enqueue_follow_up_submission(
         &mut self,
         session_id: Uuid,
-        prompt: String,
+        mut submission: ComposerSubmission,
         cx: &mut Context<Self>,
     ) {
-        let prompt = prompt.trim().to_owned();
-        if prompt.is_empty() {
+        submission.prompt = submission.prompt.trim().to_owned();
+        if submission.prompt.is_empty() {
             return;
         }
         if let Some(session) = self.state.session_mut(session_id) {
-            session.queued_messages.push(QueuedMessage::new(prompt));
+            session
+                .queued_messages
+                .push(submission.into_queued_message());
             session.updated_at = unix_time();
         }
         self.save();
@@ -1951,17 +1994,16 @@ impl Waku {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        let Some(content) = self.state.session_mut(session_id).and_then(|session| {
+        let Some(message) = self.state.session_mut(session_id).and_then(|session| {
             let index = session
                 .queued_messages
                 .iter()
                 .position(|message| message.id == message_id)?;
-            Some(session.queued_messages.remove(index).content)
+            Some(session.queued_messages.remove(index))
         }) else {
             return;
         };
-        self.composer
-            .update(cx, |input, cx| input.set_content(content, cx));
+        self.restore_composer_submission(ComposerSubmission::from_queued_message(message), cx);
         let focus_handle = self.composer_focus(cx);
         window.focus(&focus_handle, cx);
         self.save();
@@ -1985,20 +2027,24 @@ impl Waku {
         if session.is_busy() || session.queued_messages.is_empty() {
             return;
         }
-        let Some(prompt) = self
+        let Some(message) = self
             .state
             .session_mut(session_id)
-            .map(|session| session.queued_messages.remove(0).content)
+            .map(|session| session.queued_messages.remove(0))
         else {
             return;
         };
-        self.submit_prompt_for_session(session_id, prompt, cx);
+        self.submit_submission_for_session(
+            session_id,
+            ComposerSubmission::from_queued_message(message),
+            cx,
+        );
     }
 
-    pub(super) fn submit_prompt_for_session(
+    fn submit_submission_for_session(
         &mut self,
         session_id: Uuid,
-        prompt: String,
+        submission: ComposerSubmission,
         cx: &mut Context<Self>,
     ) {
         if self.response_fork_preparations.contains_key(&session_id) {
@@ -2014,9 +2060,11 @@ impl Waku {
             return;
         };
         if session.status.is_busy() {
-            self.enqueue_follow_up(session_id, prompt, cx);
+            self.enqueue_follow_up_submission(session_id, submission, cx);
             return;
         }
+        let prompt = submission.prompt.clone();
+        let human_prompt = submission.human_prompt();
         let next_turn_count = session.turns.len() + 1;
         let project_id = session.project_id;
         let workspace = session.workspace.clone();
@@ -2035,8 +2083,7 @@ impl Waku {
             .cloned()
         else {
             if selected {
-                self.composer
-                    .update(cx, |input, cx| input.set_content(prompt, cx));
+                self.restore_composer_submission(submission, cx);
                 self.show_toast(tr!("errors.prepare_task_project_not_found"));
             }
             cx.notify();
@@ -2065,8 +2112,12 @@ impl Waku {
             Vec::new()
         };
         let transcript_anchor = if let Some(session) = self.state.session_mut(session_id) {
-            session.set_title_from_prompt(&prompt);
-            let turn_id = session.begin_turn(&prompt);
+            session.set_title_from_prompt(&human_prompt);
+            let turn_id = session.begin_turn_with_presentation(
+                &prompt,
+                submission.display_content.clone(),
+                submission.attachments.clone(),
+            );
             session.status = SessionStatus::Connecting;
             session.updated_at = unix_time();
             selected.then_some(TranscriptAnchor {
@@ -2094,7 +2145,7 @@ impl Waku {
         }
         cx.notify();
 
-        let recovery_prompt = prompt.clone();
+        let preparation_prompt = human_prompt;
         cx.spawn(async move |waku, cx| {
             let prepared = cx
                 .background_executor()
@@ -2104,14 +2155,14 @@ impl Waku {
                         workspace,
                         driver_start,
                         session_id,
-                        &prompt,
+                        &preparation_prompt,
                         baseline_count,
                         baseline_in_flight,
                     )
                 })
                 .await;
             let _ = waku.update(cx, move |waku, cx| {
-                waku.finish_submission_preparation(session_id, recovery_prompt, prepared, cx);
+                waku.finish_submission_preparation(session_id, submission, prepared, cx);
             });
         })
         .detach();
@@ -2120,7 +2171,7 @@ impl Waku {
     fn finish_submission_preparation(
         &mut self,
         session_id: Uuid,
-        prompt: String,
+        submission: ComposerSubmission,
         prepared: anyhow::Result<PreparedSubmission>,
         cx: &mut Context<Self>,
     ) {
@@ -2161,8 +2212,7 @@ impl Waku {
                         self.transcript_anchor_following.set(false);
                     }
                     self.splice_transcript_rows_after_visibility_change(&previous_kinds);
-                    self.composer
-                        .update(cx, |input, cx| input.set_content(prompt, cx));
+                    self.restore_composer_submission(submission, cx);
                     self.show_toast(tr!("errors.create_worktree", error = error));
                 }
                 cx.notify();
@@ -2217,6 +2267,7 @@ impl Waku {
         self.invalidate_checkpoint_refs();
         if let Some(runtime) = self.runtimes.get_mut(&session_id) {
             runtime.pending_events.clear();
+            runtime.pending_steers.clear();
             runtime.stream_remeasure_pending = false;
             runtime.stream_phase = None;
             runtime.pending_permission = None;
@@ -2234,6 +2285,7 @@ impl Waku {
         // the same echo the CLIs show — while the provider receives the
         // rendered prompt. Claude's commands pass through untouched; its CLI
         // owns their expansion.
+        let prompt = submission.prompt;
         let driver_prompt =
             crate::composer_complete::expanded_submission(&prompt, &self.slash_command_index)
                 .unwrap_or(prompt);

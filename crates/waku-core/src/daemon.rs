@@ -256,6 +256,12 @@ impl Backend for WakuBackend {
             Command::Web3RemoveNetwork { id } => Ok(ResponsePayload::Web3Networks {
                 networks: self.web3.networks.remove(&id)?,
             }),
+            Command::Web3Prefs => Ok(ResponsePayload::Web3Prefs {
+                prefs: self.web3.prefs.load()?,
+            }),
+            Command::Web3SetPrefs { prefs } => Ok(ResponsePayload::Web3Prefs {
+                prefs: self.web3.prefs.save(prefs)?,
+            }),
             Command::Web3Wallets => Ok(ResponsePayload::Web3Wallets {
                 wallets: self.web3.wallets.load()?,
             }),
@@ -281,7 +287,14 @@ impl Backend for WakuBackend {
             }),
             Command::Web3WalletBalances { wallet_id } => {
                 let wallets = self.web3.wallets.load()?;
-                let networks = self.web3.networks.load()?;
+                let prefs = self.web3.prefs.load()?;
+                let networks = self
+                    .web3
+                    .networks
+                    .load()?
+                    .into_iter()
+                    .filter(|network| network.id == prefs.selected_network_id)
+                    .collect::<Vec<_>>();
                 Ok(ResponsePayload::Web3WalletBalances {
                     wallets: crate::web3::fetch_wallet_balances(
                         &wallets,
@@ -1870,6 +1883,8 @@ fn handle_driver_command(
         | Command::Web3Networks
         | Command::Web3UpsertNetwork { .. }
         | Command::Web3RemoveNetwork { .. }
+        | Command::Web3Prefs
+        | Command::Web3SetPrefs { .. }
         | Command::Web3Wallets
         | Command::Web3UpsertWallet { .. }
         | Command::Web3CreateWallet { .. }

@@ -22,6 +22,26 @@ fn default_true() -> bool {
     true
 }
 
+/// Device-local web3 preferences. Not a wallet; just which chain is selected.
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+pub struct Web3Prefs {
+    #[serde(default = "default_network_id_owned")]
+    pub selected_network_id: String,
+}
+
+fn default_network_id_owned() -> String {
+    default_network_id().to_string()
+}
+
+impl Default for Web3Prefs {
+    fn default() -> Self {
+        Self {
+            selected_network_id: default_network_id().to_string(),
+        }
+    }
+}
+
 /// How an address-book row was added.
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
@@ -150,21 +170,21 @@ pub struct PfToolchainStatus {
 pub fn builtin_networks() -> Vec<EvmNetwork> {
     vec![
         EvmNetwork {
-            id: "xlayer-testnet".into(),
-            name: "X Layer Testnet".into(),
-            chain_id: 1952,
-            rpc_url: "https://testrpc.xlayer.tech/terigon".into(),
-            explorer_url: Some("https://www.oklink.com/xlayer-test".into()),
-            currency_symbol: "OKB".into(),
-            builtin: true,
-            enabled: true,
-        },
-        EvmNetwork {
             id: "xlayer-mainnet".into(),
             name: "X Layer".into(),
             chain_id: 196,
             rpc_url: "https://rpc.xlayer.tech".into(),
             explorer_url: Some("https://www.okx.com/web3/explorer/xlayer".into()),
+            currency_symbol: "OKB".into(),
+            builtin: true,
+            enabled: true,
+        },
+        EvmNetwork {
+            id: "xlayer-testnet".into(),
+            name: "X Layer Testnet".into(),
+            chain_id: 1952,
+            rpc_url: "https://testrpc.xlayer.tech/terigon".into(),
+            explorer_url: Some("https://www.oklink.com/xlayer-test".into()),
             currency_symbol: "OKB".into(),
             builtin: true,
             enabled: true,
@@ -203,7 +223,7 @@ pub fn builtin_networks() -> Vec<EvmNetwork> {
 }
 
 pub fn default_network_id() -> &'static str {
-    "xlayer-testnet"
+    "xlayer-mainnet"
 }
 
 pub fn is_builtin_network_id(id: &str) -> bool {

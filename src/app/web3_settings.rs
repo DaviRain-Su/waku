@@ -2,7 +2,7 @@
 
 use super::*;
 use waku_client::web3::{
-    EvmNetwork, OkxStatus, WalletAccount, WalletBalance, WalletBalanceSnapshot, WalletSource,
+    EvmNetwork, OkxStatus, WalletAccount, WalletBalanceSnapshot, WalletSource, Web3Prefs,
 };
 
 #[derive(Clone, Copy)]
@@ -37,6 +37,7 @@ impl Waku {
             && self.web3_networks.is_some()
             && self.web3_wallets.is_some()
             && self.web3_okx.is_some()
+            && self.web3_prefs.is_some()
         {
             return;
         }
@@ -55,10 +56,11 @@ impl Waku {
                 }
                 this.web3_pending = false;
                 match snapshot {
-                    Ok((networks, wallets, okx)) => {
+                    Ok((networks, wallets, okx, prefs)) => {
                         this.web3_networks = Some(networks);
                         this.web3_wallets = Some(wallets);
                         this.web3_okx = Some(okx);
+                        this.web3_prefs = Some(prefs);
                         this.web3_error = None;
                         this.refresh_wallet_balances(cx);
                     }
@@ -101,6 +103,7 @@ impl Waku {
         if let Some(error) = &self.web3_error {
             column = column.child(settings_error(&theme, error));
         }
+        column = column.child(self.render_active_network_picker(&theme, cx));
         if let Some(backup) = &self.web3_backup_hex {
             column = column.child(
                 settings_card(&theme)
@@ -153,6 +156,75 @@ impl Waku {
             column = column.child(self.render_wallet_dialog(dialog, &theme, cx));
         }
         column.into_any_element()
+    }
+
+    pub(super) fn selected_network_id(&self) -> String {
+        self.web3_prefs
+            .as_ref()
+            .map(|prefs| prefs.selected_network_id.clone())
+            .filter(|id| !id.is_empty())
+            .unwrap_or_else(|| waku_client::web3::default_network_id().to_string())
+    }
+
+    pub(super) fn selected_network(&self) -> Option<EvmNetwork> {
+        let id = self.selected_network_id();
+        self.web3_networks.as_ref()?.iter().find(|network| network.id == id).cloned()
+    }
+
+    fn render_active_network_picker(&self, theme: &Theme, cx: &mut Context<Self>) -> Div {
+        let selected = self.selected_network_id();
+        let networks = self.web3_networks.clone().unwrap_or_default();
+        let detail = networks
+            .iter()
+            .find(|network| network.id == selected)
+            .or_else(|| networks.first())
+            .map(|network| format!("Chain {} · {}", network.chain_id, network.rpc_url));
+        let mut card = settings_card(theme)
+            .child(settings_title(theme, tr!("web3.active_network")))
+            .child(settings_hint(theme, tr!("web3.active_network_hint")))
+            .child(
+                div()
+                    .mt(px(10.0))
+                    .flex()
+                    .flex_wrap()
+                    .gap(px(8.0))
+                    .children(networks.into_iter().enumerate().map(|(index, network)| {
+                        let id = network.id.clone();
+                        let on = id == selected;
+                        settings_button(
+                            theme,
+                            ("web3-select-network", index),
+                            format!("{} ({})", network.name, network.chain_id),
+                        )
+                        .when(on, |button| {
+                            button.bg(theme.inverse).text_color(theme.on_inverse)
+                        })
+                        .on_click(cx.listener(move |this, _, _, cx| {
+                            this.set_selected_network(id.clone(), cx)
+                        }))
+                    })),
+            );
+        if let Some(detail) = detail {
+            card = card.child(settings_hint(theme, detail));
+        }
+        card
+    }
+
+    pub(super) fn set_selected_network(&mut self, id: String, cx: &mut Context<Self>) {
+        let prefs = Web3Prefs {
+            selected_network_id: id,
+        };
+        self.web3_call(
+            waku_client::Command::Web3SetPrefs { prefs },
+            cx,
+            |this, payload, cx| {
+                if let waku_client::ResponsePayload::Web3Prefs { prefs } = payload {
+                    this.web3_prefs = Some(prefs);
+                    this.web3_balances = None;
+                    this.refresh_wallet_balances(cx);
+                }
+            },
+        );
     }
 
     fn render_okx_card(&self, theme: &Theme, cx: &mut Context<Self>) -> Div {
@@ -323,7 +395,13 @@ impl Waku {
                 let line = snapshot
                     .balances
                     .iter()
-                    .map(format_balance_line)
+                    .map(|balance| {
+                        if balance.error.is_some() {
+                            format!("{} —", balance.network_name)
+                        } else {
+                            format!("{} {}", balance.display, balance.symbol)
+                        }
+                    })
                     .collect::<Vec<_>>()
                     .join("  ·  ");
                 settings_hint(theme, line)
@@ -771,17 +849,9 @@ impl Waku {
     }
 }
 
-fn format_balance_line(balance: &WalletBalance) -> String {
-    if balance.error.is_some() {
-        format!("{} —", balance.symbol)
-    } else {
-        format!("{} {}", balance.display, balance.symbol)
-    }
-}
-
 fn load_web3_snapshot(
     daemon: &waku_client::DaemonClient,
-) -> anyhow::Result<(Vec<EvmNetwork>, Vec<WalletAccount>, OkxStatus)> {
+) -> anyhow::Result<(Vec<EvmNetwork>, Vec<WalletAccount>, OkxStatus, Web3Prefs)> {
     let networks = match daemon.request(Uuid::nil(), Uuid::nil(), waku_client::Command::Web3Networks)?
     {
         waku_client::ResponsePayload::Web3Networks { networks } => networks,
@@ -795,7 +865,11 @@ fn load_web3_snapshot(
         waku_client::ResponsePayload::Web3OkxStatus { status } => status,
         _ => anyhow::bail!("invalid okx response"),
     };
-    Ok((networks, wallets, okx))
+    let prefs = match daemon.request(Uuid::nil(), Uuid::nil(), waku_client::Command::Web3Prefs)? {
+        waku_client::ResponsePayload::Web3Prefs { prefs } => prefs,
+        _ => anyhow::bail!("invalid prefs response"),
+    };
+    Ok((networks, wallets, okx, prefs))
 }
 
 fn settings_card(theme: &Theme) -> Div {

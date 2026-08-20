@@ -6,11 +6,11 @@ import { join, resolve } from "node:path";
 
 const root = resolve(import.meta.dir, "..");
 const isMacOS = process.platform === "darwin";
-const appName = "Waku Debug";
+const appName = "ProofShip Debug";
 const targetDir = resolve(root, process.env.CARGO_TARGET_DIR || "target");
 const executableSuffix = process.platform === "win32" ? ".exe" : "";
 const appPath = isMacOS
-  ? join(targetDir, "debug/Waku Debug.app")
+  ? join(targetDir, "debug/ProofShip Debug.app")
   : join(targetDir, `debug/waku${executableSuffix}`);
 const daemonPath = join(targetDir, `debug/waku-debug-daemon${executableSuffix}`);
 const watchedDirectories = ["src", "crates", "assets", "resources", "locales"];

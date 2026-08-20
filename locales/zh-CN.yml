@@ -268,6 +268,8 @@ common.copy_to_composer: 复制到输入框
 common.copy_code: 复制代码
 common.cancel: 取消
 web3.loading: 正在加载网络和钱包…
+web3.active_network: 当前网络
+web3.active_network_hint: 余额、预览和签名都走这条链。在这里切换即可，不必为每条链单独建钱包。
 web3.okx_title: OKX OnchainOS
 web3.okx_description: 可选的 OnchainOS MCP API 密钥。密钥只保存在这台电脑上，不会通过 RPC 返回。
 web3.okx_key_placeholder: OnchainOS API 密钥
@@ -307,7 +309,7 @@ web3.balance_no_address: 还没有地址——创建或导入后会显示余额
 web3.balance_no_network: 请先在设置 → 网络中启用一个网络
 web3.balance_invalid: 无法读取余额
 web3.backup_key: 立即备份此密钥
-web3.backup_key_description: 此十六进制密钥只显示一次，之后 Waku 不会再展示。部署前请先到 X Layer 测试网水龙头给该地址打 OKB。
+web3.backup_key_description: 此十六进制密钥只显示一次，之后 ProofShip 不会再展示。部署前请先到水龙头给该地址打币。
 web3.source_local: 本地
 web3.source_watch: 仅观察
 web3.source_env: 开发环境变量
@@ -324,7 +326,7 @@ web3.open_explorer: 在浏览器中打开
 web3.deploy_no_network: 请先在设置 → 网络中启用一个网络
 web3.deploy_no_wallet: 请先在设置 → 钱包中创建或导入可签名钱包
 web3.preview_no_wallet: 请先在设置 → 钱包中创建或导入可签名钱包，然后再试
-web3.preview_connected: 预览正在使用 Waku 钱包
+web3.preview_connected: 预览正在使用 ProofShip 钱包
 web3.sign_title: 确认交易
 web3.sign_description: 预览页要用设置 → 钱包里的密钥在这台电脑上签名。
 web3.sign_to: 发送到
@@ -332,11 +334,11 @@ web3.sign_data: 数据
 web3.sign_create: 创建合约
 web3.sign_confirm: 签名
 web3.sign_reject: 拒绝
-web3.sign_rejected: 已在 Waku 中拒绝
+web3.sign_rejected: 已在 ProofShip 中拒绝
 web3.sign_busy: 另有一笔交易正在等待确认
 web3.sign_sent: 交易已发送
 web3.signing: 正在签名…
-web3.sign_message_unsupported: 暂不支持消息签名。合约调用请在 Waku 弹出的确认框里点「签名」。
+web3.sign_message_unsupported: 暂不支持消息签名。合约调用请在 ProofShip 弹出的确认框里点「签名」。
 web3.artifact: 产物
 web3.network: 网络
 web3.wallet: 钱包

@@ -98,23 +98,17 @@ impl Waku {
     fn preview_chain_id(&self) -> u64 {
         self.preview_network()
             .map(|network| network.chain_id)
-            .unwrap_or(1952)
+            .unwrap_or(196)
     }
 
     fn preview_network(&self) -> Option<EvmNetwork> {
-        let networks = self.web3_networks.as_ref()?;
-        if let Some(id) = &self.preview_network_id
-            && let Some(network) = networks
+        self.selected_network().or_else(|| {
+            self.web3_networks
+                .as_ref()?
                 .iter()
-                .find(|network| network.enabled && network.id == *id)
-        {
-            return Some(network.clone());
-        }
-        networks
-            .iter()
-            .find(|network| network.enabled && network.id == "xlayer-testnet")
-            .or_else(|| networks.iter().find(|network| network.enabled))
-            .cloned()
+                .find(|network| network.enabled)
+                .cloned()
+        })
     }
 
     fn preview_signer(&self) -> Option<WalletAccount> {
@@ -211,11 +205,6 @@ impl Waku {
             return;
         };
         self.preview_connected = true;
-        if self.preview_network_id.is_none()
-            && let Some(network) = self.preview_network()
-        {
-            self.preview_network_id = Some(network.id);
-        }
         browser.update(cx, |view, _| {
             view.complete_eth(id, Ok(json!([wallet.address])))
         });
@@ -262,7 +251,7 @@ impl Waku {
             });
             return;
         };
-        self.preview_network_id = Some(network.id);
+        self.set_selected_network(network.id, cx);
         browser.update(cx, |view, _| view.complete_eth(id, Ok(Value::Null)));
         cx.notify();
     }

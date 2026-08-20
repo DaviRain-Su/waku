@@ -551,6 +551,10 @@ common.cancel:
   en: Cancel
 web3.loading:
   en: Loading networks and wallets…
+web3.active_network:
+  en: Network
+web3.active_network_hint:
+  en: Balances, preview, and signing use this chain. Switch here — you do not need a separate wallet per network.
 web3.okx_title:
   en: OKX OnchainOS
 web3.okx_description:
@@ -630,7 +634,7 @@ web3.balance_invalid:
 web3.backup_key:
   en: Backup this key now
 web3.backup_key_description:
-  en: This hex key is shown once. Waku will not display it again. Fund the address on X Layer testnet before deploying.
+  en: This hex key is shown once. ProofShip will not display it again. Fund the address on the selected network before deploying.
 web3.source_local:
   en: Local
 web3.source_watch:
@@ -664,7 +668,7 @@ web3.deploy_no_wallet:
 web3.preview_no_wallet:
   en: Create or import a signing wallet in Settings → Wallets, then try again
 web3.preview_connected:
-  en: Preview is using your Waku wallet
+  en: Preview is using your ProofShip wallet
 web3.sign_title:
   en: Confirm transaction
 web3.sign_description:
@@ -680,7 +684,7 @@ web3.sign_confirm:
 web3.sign_reject:
   en: Reject
 web3.sign_rejected:
-  en: Rejected in Waku
+  en: Rejected in ProofShip
 web3.sign_busy:
   en: Another transaction is waiting for confirmation
 web3.sign_sent:
@@ -688,7 +692,7 @@ web3.sign_sent:
 web3.signing:
   en: Signing…
 web3.sign_message_unsupported:
-  en: Message signing is not supported yet. Confirm contract calls in the Waku dialog.
+  en: Message signing is not supported yet. Confirm contract calls in the ProofShip dialog.
 web3.artifact:
   en: Artifact
 web3.network:

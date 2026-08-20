@@ -23,7 +23,7 @@ pub use mcp::{
     Web3McpAttachment, attach_claude_mcp, attach_codex_mcp, detect_attachment, merge_grok_mcp,
     merge_opencode_mcp,
 };
-pub use networks::NetworkStore;
+pub use networks::{NetworkStore, PrefsStore};
 pub use okx::{ONCHAINOS_MCP_NAME, ONCHAINOS_MCP_URL, OkxStore, init as init_okx};
 pub use toolchain::{
     cli_env as pf_cli_env, init as init_toolchain, managed_cli, resolve_cli as pf_cli,
@@ -36,6 +36,7 @@ pub struct Web3Stores {
     pub wallets: WalletStore,
     pub okx: OkxStore,
     pub deployments: DeployStore,
+    pub prefs: PrefsStore,
 }
 
 impl Web3Stores {
@@ -48,6 +49,7 @@ impl Web3Stores {
             wallets: WalletStore::new(&root),
             okx: OkxStore::new(&root),
             deployments: DeployStore::new(&root),
+            prefs: PrefsStore::new(&root),
         }
     }
 }

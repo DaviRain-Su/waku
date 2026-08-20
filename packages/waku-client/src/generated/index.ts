@@ -103,6 +103,7 @@ export type { WalletAccount } from "./WalletAccount";
 export type { WalletBalance } from "./WalletBalance";
 export type { WalletBalanceSnapshot } from "./WalletBalanceSnapshot";
 export type { WalletSource } from "./WalletSource";
+export type { Web3Prefs } from "./Web3Prefs";
 export type { WireComputerToolRequest } from "./WireComputerToolRequest";
 export type { WireDriverEvent } from "./WireDriverEvent";
 export type { WireDriverStartOptions } from "./WireDriverStartOptions";

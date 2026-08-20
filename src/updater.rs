@@ -781,7 +781,7 @@ mod macos {
                 .map(std::path::PathBuf::from)
                 .unwrap_or_else(|| std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("target"));
             let library = target_dir
-                .join("debug/Waku Debug.app/Contents/Frameworks/Sparkle.framework/Sparkle");
+                .join("debug/ProofShip Debug.app/Contents/Frameworks/Sparkle.framework/Sparkle");
             if !library.exists() {
                 return;
             }

@@ -20,11 +20,11 @@ use crate::ship::{
 };
 use crate::web3::{
     CreatedWallet, DeployArtifact, DeploymentRecord, EvmNetwork, OkxStatus, PfToolchainStatus,
-    WalletAccount, WalletBalanceSnapshot,
+    WalletAccount, WalletBalanceSnapshot, Web3Prefs,
 };
 use crate::workspace::{WorkspaceOperation, WorkspaceResult};
 
-pub const PROTOCOL_VERSION: u32 = 9;
+pub const PROTOCOL_VERSION: u32 = 10;
 pub const MAX_WIRE_MESSAGE_BYTES: usize = 48 * 1024 * 1024;
 pub const DAEMON_TOKEN_ENV: &str = "WAKU_DAEMON_TOKEN";
 pub const DAEMON_ADDRESS_ENV: &str = "WAKU_DAEMON_ADDRESS";
@@ -250,6 +250,10 @@ pub enum Command {
     },
     Web3RemoveNetwork {
         id: String,
+    },
+    Web3Prefs,
+    Web3SetPrefs {
+        prefs: Web3Prefs,
     },
     Web3Wallets,
     Web3UpsertWallet {
@@ -551,6 +555,9 @@ pub enum ResponsePayload {
     Web3Networks {
         networks: Vec<EvmNetwork>,
     },
+    Web3Prefs {
+        prefs: Web3Prefs,
+    },
     Web3Wallets {
         wallets: Vec<WalletAccount>,
     },
@@ -676,7 +683,7 @@ mod tests {
 
         assert_eq!(json["type"], "forkSessionFromResponse");
         assert_eq!(json["turnCount"], 7);
-        assert_eq!(PROTOCOL_VERSION, 9);
+        assert_eq!(PROTOCOL_VERSION, 10);
     }
 
     #[test]
@@ -685,7 +692,7 @@ mod tests {
 
         assert_eq!(json["type"], "rewindSessionToMessage");
         assert_eq!(json["turnCount"], 4);
-        assert_eq!(PROTOCOL_VERSION, 9);
+        assert_eq!(PROTOCOL_VERSION, 10);
     }
 
     #[test]

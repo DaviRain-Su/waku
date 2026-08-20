@@ -3,7 +3,9 @@
 use std::path::{Path, PathBuf};
 
 use anyhow::{bail, Context as _};
-use waku_protocol::web3::{builtin_networks, is_builtin_network_id, EvmNetwork};
+use waku_protocol::web3::{
+    builtin_networks, default_network_id, is_builtin_network_id, EvmNetwork, Web3Prefs,
+};
 
 pub struct NetworkStore {
     file: PathBuf,
@@ -88,6 +90,41 @@ fn merge_builtins(mut networks: Vec<EvmNetwork>) -> Vec<EvmNetwork> {
     networks
 }
 
+pub struct PrefsStore {
+    file: PathBuf,
+}
+
+impl PrefsStore {
+    pub fn new(data_dir: &Path) -> Self {
+        Self {
+            file: data_dir.join("prefs.json"),
+        }
+    }
+
+    pub fn load(&self) -> anyhow::Result<Web3Prefs> {
+        match std::fs::read_to_string(&self.file) {
+            Ok(raw) => serde_json::from_str(&raw)
+                .with_context(|| format!("could not parse {}", self.file.display())),
+            Err(err) if err.kind() == std::io::ErrorKind::NotFound => Ok(Web3Prefs::default()),
+            Err(err) => Err(err.into()),
+        }
+    }
+
+    pub fn save(&self, prefs: Web3Prefs) -> anyhow::Result<Web3Prefs> {
+        let mut prefs = prefs;
+        if prefs.selected_network_id.trim().is_empty() {
+            prefs.selected_network_id = default_network_id().to_string();
+        }
+        if let Some(parent) = self.file.parent() {
+            std::fs::create_dir_all(parent)?;
+        }
+        let tmp = self.file.with_extension("json.tmp");
+        std::fs::write(&tmp, serde_json::to_vec(&prefs)?)?;
+        std::fs::rename(&tmp, &self.file)?;
+        Ok(prefs)
+    }
+}
+
 fn validate_network(network: &EvmNetwork) -> anyhow::Result<()> {
     if network.id.is_empty()
         || !network
@@ -135,8 +172,8 @@ mod tests {
         let store = NetworkStore::new(dir.path());
         let loaded = store.load().unwrap();
         assert!(loaded.iter().all(|network| network.builtin));
-        assert_eq!(loaded[0].id, "xlayer-testnet");
-        assert_eq!(loaded[1].id, "xlayer-mainnet");
+        assert_eq!(loaded[0].id, "xlayer-mainnet");
+        assert_eq!(loaded[1].id, "xlayer-testnet");
         assert!(loaded.iter().any(|network| network.id == "ethereum-sepolia"));
         assert!(loaded.iter().any(|network| network.id == "base-sepolia"));
         let anvil = loaded
@@ -219,6 +256,6 @@ mod tests {
         let loaded = store.load().unwrap();
         assert_eq!(loaded.last().map(|network| network.id.as_str()), Some("anvil"));
         assert!(!loaded.last().unwrap().enabled);
-        assert_eq!(loaded[0].id, "xlayer-testnet");
+        assert_eq!(loaded[0].id, "xlayer-mainnet");
     }
 }

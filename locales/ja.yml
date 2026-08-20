@@ -283,6 +283,8 @@ common.copy_to_composer: 入力欄にコピー
 common.copy_code: コードをコピー
 common.cancel: キャンセル
 web3.loading: ネットワークとウォレットを読み込み中…
+web3.active_network: ネットワーク
+web3.active_network_hint: 残高・プレビュー・署名はこのチェーンを使います。ここで切り替えてください。ネットワークごとにウォレットを分ける必要はありません。
 web3.okx_title: OKX OnchainOS
 web3.okx_description: OnchainOS MCP 用の任意の API キー。キーはこのコンピュータにだけ保存され、RPC では返しません。
 web3.okx_key_placeholder: OnchainOS API キー
@@ -322,7 +324,7 @@ web3.balance_no_address: アドレスがまだありません。作成または�
 web3.balance_no_network: 残高を表示するには設定 → ネットワークでネットワークを有効にしてください
 web3.balance_invalid: 残高を読み取れませんでした
 web3.backup_key: 今すぐこのキーをバックアップ
-web3.backup_key_description: この 16 進キーは一度だけ表示されます。Waku は再表示しません。デプロイ前に X Layer テストネットのフォーセットでアドレスに OKB を入れてください。
+web3.backup_key_description: この 16 進キーは一度だけ表示されます。ProofShip は再表示しません。デプロイ前にフォーセットでアドレスに入金してください。
 web3.source_local: ローカル
 web3.source_watch: ウォッチのみ
 web3.source_env: 開発用環境変数
@@ -339,7 +341,7 @@ web3.open_explorer: エクスプローラーで開く
 web3.deploy_no_network: 先に設定 → ネットワークでネットワークを有効にしてください
 web3.deploy_no_wallet: 先に設定 → ウォレットで署名用ウォレットを作成またはインポートしてください
 web3.preview_no_wallet: 先に設定 → ウォレットで署名用ウォレットを作成またはインポートしてから、もう一度試してください
-web3.preview_connected: プレビューは Waku ウォレットを使っています
+web3.preview_connected: プレビューは ProofShip ウォレットを使っています
 web3.sign_title: トランザクションを確認
 web3.sign_description: プレビューページが、設定 → ウォレットの鍵でこのコンピュータに署名させようとしています。
 web3.sign_to: 送信先
@@ -347,11 +349,11 @@ web3.sign_data: データ
 web3.sign_create: コントラクト作成
 web3.sign_confirm: 署名
 web3.sign_reject: 拒否
-web3.sign_rejected: Waku で拒否しました
+web3.sign_rejected: ProofShip で拒否しました
 web3.sign_busy: 別のトランザクションが確認待ちです
 web3.sign_sent: トランザクションを送信しました
 web3.signing: 署名中…
-web3.sign_message_unsupported: メッセージ署名は未対応です。コントラクト呼び出しは Waku の確認ダイアログで署名してください。
+web3.sign_message_unsupported: メッセージ署名は未対応です。コントラクト呼び出しは ProofShip の確認ダイアログで署名してください。
 web3.artifact: 成果物
 web3.network: ネットワーク
 web3.wallet: ウォレット

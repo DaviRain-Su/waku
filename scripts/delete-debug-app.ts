@@ -65,20 +65,19 @@ async function existingTargets(): Promise<Target[]> {
 // Checkout-local state and build artifacts. Keep the release cache intact.
 addCandidate(join(projectRoot, "temp"));
 addCandidate(join(projectRoot, ".waku-cache", "computer-use", "debug"));
+addCandidate(join(projectRoot, "target", "debug", "ProofShip Debug.app"));
 addCandidate(join(projectRoot, "target", "debug", "Waku Debug.app"));
 
 if (process.env.CARGO_TARGET_DIR) {
-  addCandidate(
-    join(
-      resolve(projectRoot, process.env.CARGO_TARGET_DIR),
-      "debug",
-      "Waku Debug.app",
-    ),
-  );
+  const cargoDebug = join(resolve(projectRoot, process.env.CARGO_TARGET_DIR), "debug");
+  addCandidate(join(cargoDebug, "ProofShip Debug.app"));
+  addCandidate(join(cargoDebug, "Waku Debug.app"));
 }
 
 // Debug app bundles that may have been copied outside the checkout.
+addCandidate(join(userHome, "Applications", "ProofShip Debug.app"));
 addCandidate(join(userHome, "Applications", "Waku Debug.app"));
+addCandidate("/Applications/ProofShip Debug.app");
 addCandidate("/Applications/Waku Debug.app");
 
 // Debug-only app data. The release app uses Waku/sh.waku and is not included.

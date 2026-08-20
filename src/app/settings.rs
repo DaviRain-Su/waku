@@ -1,9 +1,5 @@
-use gpui::actions;
-
 use super::composer::next_picker_highlight;
 use super::*;
-
-actions!(waku_settings, [ClearSearch]);
 
 const SETTINGS_CONTENT_MAX_WIDTH: f32 = 760.0;
 
@@ -19,7 +15,7 @@ const SETTINGS_SIDEBAR_CONTEXT: &str = "SettingsSidebar";
 /// `down` have to be claimed from under it, and only a binding can do that:
 /// they arrive as actions, which consume the keystroke before the field sees
 /// it.
-const SETTINGS_SEARCH_CONTEXT: &str = "SettingsSidebar > ComposerInput";
+const SETTINGS_SEARCH_CONTEXT: &str = "SettingsSidebar > TextInput";
 
 /// The sidebar's rows in display order, each with the keyword haystack the
 /// search field filters against.
@@ -98,10 +94,6 @@ pub fn init(cx: &mut App) {
     cx.bind_keys([
         KeyBinding::new("down", SelectNextEntry, Some(SETTINGS_SEARCH_CONTEXT)),
         KeyBinding::new("up", SelectPreviousEntry, Some(SETTINGS_SEARCH_CONTEXT)),
-        // Two-stage escape: the first press clears the query, and on an empty
-        // field the handler propagates, so the keystroke falls through to
-        // `CancelTurn`, which closes settings.
-        KeyBinding::new("escape", ClearSearch, Some(SETTINGS_SEARCH_CONTEXT)),
     ]);
 }
 
@@ -171,7 +163,7 @@ impl Waku {
                     .items_center()
                     .gap(px(10.0))
                     .cursor_default()
-                    .text_size(px(13.0))
+                    .text_size(sp(13.0))
                     .text_color(if selected {
                         theme.text
                     } else {
@@ -206,15 +198,6 @@ impl Waku {
             .on_action(cx.listener(|this, _: &SelectPreviousEntry, _, cx| {
                 this.cycle_settings_page("up", cx);
             }))
-            .on_action(cx.listener(|this, _: &ClearSearch, _, cx| {
-                if this.settings_search.read(cx).content().is_empty() {
-                    cx.propagate();
-                    return;
-                }
-                // `clear` emits `Edited`, and the app's subscription turns
-                // that into the notify that re-expands the filtered list.
-                this.settings_search.update(cx, |input, cx| input.clear(cx));
-            }))
             .w(px(DEFAULT_SIDEBAR_WIDTH))
             .h_full()
             .flex_none()
@@ -233,7 +216,7 @@ impl Waku {
                         .items_center()
                         .gap(px(9.0))
                         .cursor_default()
-                        .text_size(px(13.0))
+                        .text_size(sp(13.0))
                         .text_color(theme.text_secondary)
                         .hover(|element| element.bg(theme.overlay))
                         .active(|element| element.bg(theme.overlay_strong))
@@ -392,7 +375,7 @@ impl Waku {
                 div()
                     .pt(px(2.0))
                     .flex_none()
-                    .text_size(px(18.0))
+                    .text_size(sp(18.0))
                     .font_weight(FontWeight::MEDIUM)
                     .text_color(theme.text)
                     .child(match page {
@@ -497,7 +480,7 @@ impl Waku {
                     .bg(theme.raised)
                     .child(
                         div()
-                            .text_size(px(13.5))
+                            .text_size(sp(13.5))
                             .font_weight(FontWeight::MEDIUM)
                             .text_color(theme.text)
                             .child(tr!("settings.local_by_default")),
@@ -505,8 +488,8 @@ impl Waku {
                     .child(
                         div()
                             .mt(px(5.0))
-                            .text_size(px(12.5))
-                            .line_height(px(18.0))
+                            .text_size(sp(12.5))
+                            .line_height(sp(18.0))
                             .text_color(theme.text_secondary)
                             .child(tr!("settings.local_by_default_description")),
                     ),
@@ -529,7 +512,7 @@ impl Waku {
                             .min_w_0()
                             .child(
                                 div()
-                                    .text_size(px(13.5))
+                                    .text_size(sp(13.5))
                                     .font_weight(FontWeight::MEDIUM)
                                     .text_color(theme.text)
                                     .child(tr!("settings.share_anonymous_usage_data")),
@@ -537,8 +520,8 @@ impl Waku {
                             .child(
                                 div()
                                     .mt(px(5.0))
-                                    .text_size(px(12.5))
-                                    .line_height(px(18.0))
+                                    .text_size(sp(12.5))
+                                    .line_height(sp(18.0))
                                     .text_color(theme.text_secondary)
                                     .child(tr!("settings.share_anonymous_usage_data_description")),
                             ),
@@ -573,7 +556,7 @@ impl Waku {
                                 .min_w_0()
                                 .child(
                                     div()
-                                        .text_size(px(13.5))
+                                        .text_size(sp(13.5))
                                         .font_weight(FontWeight::MEDIUM)
                                         .text_color(theme.text)
                                         .child(tr!("settings.automatic_updates")),
@@ -581,8 +564,8 @@ impl Waku {
                                 .child(
                                     div()
                                         .mt(px(5.0))
-                                        .text_size(px(12.5))
-                                        .line_height(px(18.0))
+                                        .text_size(sp(12.5))
+                                        .line_height(sp(18.0))
                                         .text_color(theme.text_secondary)
                                         .child(tr!("settings.automatic_updates_description")),
                                 ),
@@ -623,7 +606,7 @@ impl Waku {
                 .bg(theme.raised)
                 .child(
                     div()
-                        .text_size(px(13.5))
+                        .text_size(sp(13.5))
                         .font_weight(FontWeight::MEDIUM)
                         .text_color(theme.text)
                         .child(tr!("daemon.external_title")),
@@ -631,8 +614,8 @@ impl Waku {
                 .child(
                     div()
                         .mt(px(5.0))
-                        .text_size(px(12.5))
-                        .line_height(px(18.0))
+                        .text_size(sp(12.5))
+                        .line_height(sp(18.0))
                         .text_color(theme.text_secondary)
                         .child(tr!("daemon.external_description")),
                 )
@@ -668,7 +651,7 @@ impl Waku {
             .items_center()
             .justify_center()
             .cursor_default()
-            .text_size(px(10.5))
+            .text_size(sp(10.5))
             .text_color(theme.text_secondary)
             .opacity(if apply_disabled { 0.55 } else { 1.0 })
             .focus_visible(|style| style.border_color(theme.accent))
@@ -708,7 +691,7 @@ impl Waku {
             .items_center()
             .gap(px(5.0))
             .cursor_default()
-            .text_size(px(10.5))
+            .text_size(sp(10.5))
             .text_color(theme.text_secondary)
             .focus_visible(|style| style.border_color(theme.accent))
             .hover(|element| element.bg(theme.overlay))
@@ -799,7 +782,7 @@ impl Waku {
             .items_center()
             .gap(px(5.0))
             .cursor_default()
-            .text_size(px(10.5))
+            .text_size(sp(10.5))
             .text_color(theme.text_secondary)
             .focus_visible(|style| style.border_color(theme.accent))
             .hover(|element| element.bg(theme.overlay))
@@ -842,7 +825,7 @@ impl Waku {
             .flex()
             .items_center()
             .cursor_default()
-            .text_size(px(10.5))
+            .text_size(sp(10.5))
             .text_color(theme.text_secondary)
             .opacity(if pending { 0.55 } else { 1.0 })
             .focus_visible(|style| style.border_color(theme.accent))
@@ -890,7 +873,7 @@ impl Waku {
                                     .gap(px(7.0))
                                     .child(
                                         div()
-                                            .text_size(px(13.5))
+                                            .text_size(sp(13.5))
                                             .font_weight(FontWeight::MEDIUM)
                                             .text_color(theme.text)
                                             .child(tr!("daemon.expose_title")),
@@ -900,7 +883,7 @@ impl Waku {
                                             .px(px(6.0))
                                             .py(px(2.0))
                                             .rounded_full()
-                                            .text_size(px(9.5))
+                                            .text_size(sp(9.5))
                                             .text_color(if enabled {
                                                 theme.success
                                             } else {
@@ -921,8 +904,8 @@ impl Waku {
                                     .mt(px(5.0))
                                     .min_w_0()
                                     .whitespace_normal()
-                                    .text_size(px(12.0))
-                                    .line_height(px(18.0))
+                                    .text_size(sp(12.0))
+                                    .line_height(sp(18.0))
                                     .text_color(theme.text_secondary)
                                     .child(tr!("daemon.expose_description")),
                             ),
@@ -938,7 +921,7 @@ impl Waku {
                         .bg(theme.raised)
                         .child(
                             div()
-                                .text_size(px(13.5))
+                                .text_size(sp(13.5))
                                 .font_weight(FontWeight::MEDIUM)
                                 .text_color(theme.text)
                                 .child(tr!("daemon.connection_title")),
@@ -948,8 +931,8 @@ impl Waku {
                                 .mt(px(4.0))
                                 .min_w_0()
                                 .whitespace_normal()
-                                .text_size(px(11.5))
-                                .line_height(px(16.0))
+                                .text_size(sp(11.5))
+                                .line_height(sp(16.0))
                                 .text_color(theme.text_secondary)
                                 .child(tr!("daemon.connection_description")),
                         )
@@ -965,7 +948,7 @@ impl Waku {
                                         .min_w_0()
                                         .child(
                                             div()
-                                                .text_size(px(11.0))
+                                                .text_size(sp(11.0))
                                                 .font_weight(FontWeight::MEDIUM)
                                                 .text_color(theme.text)
                                                 .child(tr!("daemon.port")),
@@ -974,8 +957,8 @@ impl Waku {
                                             div()
                                                 .mt(px(3.0))
                                                 .whitespace_normal()
-                                                .text_size(px(10.0))
-                                                .line_height(px(14.0))
+                                                .text_size(sp(10.0))
+                                                .line_height(sp(14.0))
                                                 .text_color(theme.text_tertiary)
                                                 .child(tr!("daemon.port_description")),
                                         ),
@@ -1002,7 +985,7 @@ impl Waku {
                                         .min_w_0()
                                         .child(
                                             div()
-                                                .text_size(px(11.0))
+                                                .text_size(sp(11.0))
                                                 .font_weight(FontWeight::MEDIUM)
                                                 .text_color(theme.text)
                                                 .child(tr!("daemon.allowed_origins")),
@@ -1011,8 +994,8 @@ impl Waku {
                                             div()
                                                 .mt(px(3.0))
                                                 .whitespace_normal()
-                                                .text_size(px(10.0))
-                                                .line_height(px(14.0))
+                                                .text_size(sp(10.0))
+                                                .line_height(sp(14.0))
                                                 .text_color(theme.text_tertiary)
                                                 .child(tr!("daemon.allowed_origins_description")),
                                         ),
@@ -1040,7 +1023,7 @@ impl Waku {
                         .bg(theme.raised)
                         .child(
                             div()
-                                .text_size(px(13.5))
+                                .text_size(sp(13.5))
                                 .font_weight(FontWeight::MEDIUM)
                                 .text_color(theme.text)
                                 .child(tr!("daemon.credentials_title")),
@@ -1050,8 +1033,8 @@ impl Waku {
                                 .mt(px(4.0))
                                 .min_w_0()
                                 .whitespace_normal()
-                                .text_size(px(11.5))
-                                .line_height(px(16.0))
+                                .text_size(sp(11.5))
+                                .line_height(sp(16.0))
                                 .text_color(theme.text_secondary)
                                 .child(tr!("daemon.credentials_description")),
                         )
@@ -1066,7 +1049,7 @@ impl Waku {
                                     div()
                                         .w(px(80.0))
                                         .flex_none()
-                                        .text_size(px(10.5))
+                                        .text_size(sp(10.5))
                                         .text_color(theme.text_tertiary)
                                         .child(tr!("daemon.websocket_url")),
                                 )
@@ -1076,7 +1059,7 @@ impl Waku {
                                         .min_w_0()
                                         .truncate()
                                         .font_family(".SystemUIFontMonospaced")
-                                        .text_size(px(11.0))
+                                        .text_size(sp(11.0))
                                         .text_color(theme.text)
                                         .child(SharedString::from(format!(
                                             "ws://{}:{port}",
@@ -1097,7 +1080,7 @@ impl Waku {
                                     div()
                                         .w(px(80.0))
                                         .flex_none()
-                                        .text_size(px(10.5))
+                                        .text_size(sp(10.5))
                                         .text_color(theme.text_tertiary)
                                         .child(tr!("daemon.token")),
                                 )
@@ -1107,7 +1090,7 @@ impl Waku {
                                         .min_w_0()
                                         .truncate()
                                         .font_family(".SystemUIFontMonospaced")
-                                        .text_size(px(11.0))
+                                        .text_size(sp(11.0))
                                         .text_color(theme.text)
                                         .child(SharedString::from(if token_revealed {
                                             token.clone()
@@ -1136,8 +1119,8 @@ impl Waku {
                                         .flex_1()
                                         .min_w_0()
                                         .whitespace_normal()
-                                        .text_size(px(10.5))
-                                        .line_height(px(15.0))
+                                        .text_size(sp(10.5))
+                                        .line_height(sp(15.0))
                                         .text_color(theme.text_secondary)
                                         .child(tr!("daemon.security_warning")),
                                 ),
@@ -1322,6 +1305,64 @@ impl Waku {
             },
         );
 
+        let selected_ui_font_size = self.state.ui_font_size;
+        let weak = cx.entity().downgrade();
+        let ui_font_size_handle = self.menu_handle("ui-font-size-selector", cx);
+        let ui_font_size_selector = dropdown_menu(
+            MenuChip::new("ui-font-size-selector")
+                .label(font_size_label(selected_ui_font_size))
+                .outlined()
+                .selected(ui_font_size_handle.is_open())
+                .w(px(116.0))
+                .justify_between(),
+            "ui-font-size-selector-menu",
+            &ui_font_size_handle,
+            MenuAlign::BelowRight,
+            move |_| {
+                FONT_SIZES
+                    .into_iter()
+                    .map(|size| {
+                        let weak = weak.clone();
+                        MenuItem::new(font_size_label(size), move |window, cx| {
+                            let _ = weak.update(cx, |this, cx| {
+                                this.set_ui_font_size(size, window, cx);
+                            });
+                        })
+                        .selected(size == selected_ui_font_size)
+                    })
+                    .collect()
+            },
+        );
+
+        let selected_code_font_size = self.state.code_font_size;
+        let weak = cx.entity().downgrade();
+        let code_font_size_handle = self.menu_handle("code-font-size-selector", cx);
+        let code_font_size_selector = dropdown_menu(
+            MenuChip::new("code-font-size-selector")
+                .label(font_size_label(selected_code_font_size))
+                .outlined()
+                .selected(code_font_size_handle.is_open())
+                .w(px(116.0))
+                .justify_between(),
+            "code-font-size-selector-menu",
+            &code_font_size_handle,
+            MenuAlign::BelowRight,
+            move |_| {
+                FONT_SIZES
+                    .into_iter()
+                    .map(|size| {
+                        let weak = weak.clone();
+                        MenuItem::new(font_size_label(size), move |_, cx| {
+                            let _ = weak.update(cx, |this, cx| {
+                                this.set_code_font_size(size, cx);
+                            });
+                        })
+                        .selected(size == selected_code_font_size)
+                    })
+                    .collect()
+            },
+        );
+
         let weak = cx.entity().downgrade();
         let language_handle = self.menu_handle("language-selector", cx);
         let language_selector = dropdown_menu(
@@ -1373,7 +1414,7 @@ impl Waku {
                             .min_w_0()
                             .child(
                                 div()
-                                    .text_size(px(13.5))
+                                    .text_size(sp(13.5))
                                     .font_weight(FontWeight::MEDIUM)
                                     .text_color(theme.text)
                                     .child(tr!("settings.theme")),
@@ -1381,8 +1422,8 @@ impl Waku {
                             .child(
                                 div()
                                     .mt(px(5.0))
-                                    .text_size(px(12.5))
-                                    .line_height(px(18.0))
+                                    .text_size(sp(12.5))
+                                    .line_height(sp(18.0))
                                     .text_color(theme.text_secondary)
                                     .child(tr!("settings.theme_description")),
                             ),
@@ -1405,7 +1446,7 @@ impl Waku {
                             .min_w_0()
                             .child(
                                 div()
-                                    .text_size(px(13.5))
+                                    .text_size(sp(13.5))
                                     .font_weight(FontWeight::MEDIUM)
                                     .text_color(theme.text)
                                     .child(tr!("language.title")),
@@ -1413,15 +1454,121 @@ impl Waku {
                             .child(
                                 div()
                                     .mt(px(5.0))
-                                    .text_size(px(12.5))
-                                    .line_height(px(18.0))
+                                    .text_size(sp(12.5))
+                                    .line_height(sp(18.0))
                                     .text_color(theme.text_secondary)
                                     .child(tr!("language.description")),
                             ),
                     )
                     .child(language_selector),
             )
+            .child(div().mx(px(20.0)).h(px(1.0)).bg(theme.border))
+            .child(
+                div()
+                    .w_full()
+                    .min_h(px(60.0))
+                    .px(px(20.0))
+                    .py(px(12.0))
+                    .flex()
+                    .items_center()
+                    .gap(px(24.0))
+                    .child(
+                        div()
+                            .flex_1()
+                            .min_w_0()
+                            .child(
+                                div()
+                                    .text_size(sp(13.5))
+                                    .font_weight(FontWeight::MEDIUM)
+                                    .text_color(theme.text)
+                                    .child(tr!("settings.ui_font_size")),
+                            )
+                            .child(
+                                div()
+                                    .mt(px(5.0))
+                                    .text_size(sp(12.5))
+                                    .line_height(sp(18.0))
+                                    .text_color(theme.text_secondary)
+                                    .child(tr!("settings.ui_font_size_description")),
+                            ),
+                    )
+                    .child(ui_font_size_selector),
+            )
+            .child(div().mx(px(20.0)).h(px(1.0)).bg(theme.border))
+            .child(
+                div()
+                    .w_full()
+                    .min_h(px(60.0))
+                    .px(px(20.0))
+                    .py(px(12.0))
+                    .flex()
+                    .items_center()
+                    .gap(px(24.0))
+                    .child(
+                        div()
+                            .flex_1()
+                            .min_w_0()
+                            .child(
+                                div()
+                                    .text_size(sp(13.5))
+                                    .font_weight(FontWeight::MEDIUM)
+                                    .text_color(theme.text)
+                                    .child(tr!("settings.code_font_size")),
+                            )
+                            .child(
+                                div()
+                                    .mt(px(5.0))
+                                    .text_size(sp(12.5))
+                                    .line_height(sp(18.0))
+                                    .text_color(theme.text_secondary)
+                                    .child(tr!("settings.code_font_size_description")),
+                            ),
+                    )
+                    .child(code_font_size_selector),
+            )
             .into_any_element()
+    }
+
+    fn set_ui_font_size(&mut self, size: f32, window: &mut Window, cx: &mut Context<Self>) {
+        let size = proofship_client::persistence::sanitized_ui_font_size(size);
+        if self.state.ui_font_size == size {
+            return;
+        }
+        self.state.ui_font_size = size;
+        // Chrome is authored in `sp` rems; the rem size is the setting.
+        window.set_rem_size(px(size));
+        self.remeasure_font_sized_surfaces();
+        self.save();
+        window.refresh();
+        cx.notify();
+    }
+
+    fn set_code_font_size(&mut self, size: f32, cx: &mut Context<Self>) {
+        let size = proofship_client::persistence::sanitized_code_font_size(size);
+        if self.state.code_font_size == size {
+            return;
+        }
+        self.state.code_font_size = size;
+        self.remeasure_font_sized_surfaces();
+        self.save();
+        cx.notify();
+    }
+
+    /// Drop every cached row height that a font size participates in. The
+    /// virtualized lists remember measured heights, so a stale entry would
+    /// misplace scroll anchors until the row happened to remeasure. The
+    /// sidebar list keeps its uniform row height and needs no reset.
+    fn remeasure_font_sized_surfaces(&self) {
+        self.reset_transcript_rows(self.transcript_row_count());
+        let line_count = self
+            .right_panel_diff_snapshot
+            .as_ref()
+            .map_or(0, |snapshot| snapshot.lines.len());
+        self.right_panel_diff_list_state.reset(line_count);
+        self.right_panel_diff_tree_list_state
+            .reset(self.right_panel_diff_tree_rows.borrow().len());
+        self.skills_list_state
+            .reset(self.skills_rows.borrow().len());
     }
 
     fn render_providers_settings(&self, cx: &mut Context<Self>) -> AnyElement {
@@ -1445,7 +1592,7 @@ impl Waku {
             .items_center()
             .gap(px(6.0))
             .cursor_default()
-            .text_size(px(10.5))
+            .text_size(sp(10.5))
             .text_color(theme.text_secondary)
             .opacity(if checking { 0.6 } else { 1.0 })
             .hover(|element| element.bg(theme.overlay))
@@ -1583,7 +1730,7 @@ impl Waku {
                                 .gap(px(7.0))
                                 .child(
                                     div()
-                                        .text_size(px(12.5))
+                                        .text_size(sp(12.5))
                                         .font_weight(FontWeight::MEDIUM)
                                         .text_color(if installed {
                                             theme.text
@@ -1596,7 +1743,7 @@ impl Waku {
                                     element.child(
                                         div()
                                             .font_family(crate::md::render::MONO_FAMILY)
-                                            .text_size(px(10.0))
+                                            .text_size(sp(10.0))
                                             .text_color(theme.text_tertiary)
                                             .child(SharedString::from(format!("v{version}"))),
                                     )
@@ -1605,7 +1752,7 @@ impl Waku {
                         .child(
                             div()
                                 .mt(px(3.0))
-                                .text_size(px(10.5))
+                                .text_size(sp(10.5))
                                 .text_color(theme.text_tertiary)
                                 .child(detail),
                         ),
@@ -1646,7 +1793,7 @@ impl Waku {
                             .min_w_0()
                             .child(
                                 div()
-                                    .text_size(px(13.5))
+                                    .text_size(sp(13.5))
                                     .font_weight(FontWeight::MEDIUM)
                                     .text_color(theme.text)
                                     .child(tr!("providers.coding_agents")),
@@ -1654,8 +1801,8 @@ impl Waku {
                             .child(
                                 div()
                                     .mt(px(5.0))
-                                    .text_size(px(12.0))
-                                    .line_height(px(18.0))
+                                    .text_size(sp(12.0))
+                                    .line_height(sp(18.0))
                                     .text_color(theme.text_secondary)
                                     .child(tr!("providers.description")),
                             ),
@@ -1671,7 +1818,7 @@ impl Waku {
                             .when_some(checked_label, |element, label| {
                                 element.child(
                                     div()
-                                        .text_size(px(9.5))
+                                        .text_size(sp(9.5))
                                         .text_color(theme.text_ghost)
                                         .child(SharedString::from(label)),
                                 )
@@ -1720,7 +1867,7 @@ impl Waku {
             .flex_none()
             .items_center()
             .cursor_default()
-            .text_size(px(10.5))
+            .text_size(sp(10.5))
             .text_color(theme.text_secondary)
             .hover(|element| element.bg(theme.overlay))
             .child(tr!("common.reset"))
@@ -1738,15 +1885,15 @@ impl Waku {
             .gap(px(5.0))
             .child(
                 div()
-                    .text_size(px(11.5))
+                    .text_size(sp(11.5))
                     .font_weight(FontWeight::MEDIUM)
                     .text_color(theme.text)
                     .child(tr!("providers.binary_path")),
             )
             .child(
                 div()
-                    .text_size(px(10.5))
-                    .line_height(px(15.0))
+                    .text_size(sp(10.5))
+                    .line_height(sp(15.0))
                     .text_color(theme.text_tertiary)
                     .child(SharedString::from(tr!(
                         "providers.binary_path_description",
@@ -1771,7 +1918,7 @@ impl Waku {
             )
             .child(
                 div()
-                    .text_size(px(10.0))
+                    .text_size(sp(10.0))
                     .text_color(theme.text_ghost)
                     .child(SharedString::from(caption)),
             )
@@ -1899,7 +2046,7 @@ impl Waku {
             allowed_apps = allowed_apps.child(
                 div()
                     .py(px(12.0))
-                    .text_size(px(11.5))
+                    .text_size(sp(11.5))
                     .text_color(theme.text_tertiary)
                     .child(tr!("computer_use.no_always_allowed_apps")),
             );
@@ -1933,7 +2080,7 @@ impl Waku {
                                 .min_w_0()
                                 .child(
                                     div()
-                                        .text_size(px(12.0))
+                                        .text_size(sp(12.0))
                                         .font_weight(FontWeight::MEDIUM)
                                         .text_color(theme.text)
                                         .child(SharedString::from(grant.app_name.clone())),
@@ -1941,7 +2088,7 @@ impl Waku {
                                 .child(
                                     div()
                                         .mt(px(2.0))
-                                        .text_size(px(9.5))
+                                        .text_size(sp(9.5))
                                         .text_color(theme.text_tertiary)
                                         .truncate()
                                         .child(SharedString::from(grant.bundle_id.clone())),
@@ -1958,7 +2105,7 @@ impl Waku {
                                 .flex()
                                 .items_center()
                                 .cursor_default()
-                                .text_size(px(10.5))
+                                .text_size(sp(10.5))
                                 .text_color(theme.text_secondary)
                                 .hover(|element| element.bg(theme.overlay).text_color(theme.danger))
                                 .child(tr!("common.revoke"))
@@ -1991,7 +2138,7 @@ impl Waku {
                             .min_w_0()
                             .child(
                                 div()
-                                    .text_size(px(13.5))
+                                    .text_size(sp(13.5))
                                     .font_weight(FontWeight::MEDIUM)
                                     .text_color(theme.text)
                                     .child(tr!("computer_use.allow_apps")),
@@ -1999,8 +2146,8 @@ impl Waku {
                             .child(
                                 div()
                                     .mt(px(5.0))
-                                    .text_size(px(12.0))
-                                    .line_height(px(18.0))
+                                    .text_size(sp(12.0))
+                                    .line_height(sp(18.0))
                                     .text_color(theme.text_secondary)
                                     .child(tr!("computer_use.availability")),
                             ),
@@ -2022,7 +2169,7 @@ impl Waku {
                     .bg(theme.raised)
                     .child(
                         div()
-                            .text_size(px(13.5))
+                            .text_size(sp(13.5))
                             .font_weight(FontWeight::MEDIUM)
                             .text_color(theme.text)
                             .child(tr!("computer_use.macos_access")),
@@ -2030,7 +2177,7 @@ impl Waku {
                     .child(
                         div()
                             .mt(px(4.0))
-                            .text_size(px(11.5))
+                            .text_size(sp(11.5))
                             .text_color(theme.text_secondary)
                             .child(SharedString::from(tr!(
                                 "computer_use.helper_access",
@@ -2066,7 +2213,7 @@ impl Waku {
                                 .flex()
                                 .items_center()
                                 .cursor_default()
-                                .text_size(px(10.5))
+                                .text_size(sp(10.5))
                                 .opacity(if pending { 0.6 } else { 1.0 })
                                 .child(if pending {
                                     tr!("common.checking")
@@ -2087,7 +2234,7 @@ impl Waku {
                     .bg(theme.raised)
                     .child(
                         div()
-                            .text_size(px(13.5))
+                            .text_size(sp(13.5))
                             .font_weight(FontWeight::MEDIUM)
                             .text_color(theme.text)
                             .child(tr!("computer_use.always_allowed_apps")),
@@ -2095,7 +2242,7 @@ impl Waku {
                     .child(
                         div()
                             .mt(px(4.0))
-                            .text_size(px(11.5))
+                            .text_size(sp(11.5))
                             .text_color(theme.text_secondary)
                             .child(tr!("computer_use.always_allowed_apps_description")),
                     )
@@ -2307,6 +2454,19 @@ impl Waku {
     }
 }
 
+/// Sizes offered by the font-size dropdowns. A hand-edited `app.json` may
+/// hold values outside this list; they render as-is and simply select
+/// nothing here.
+const FONT_SIZES: [f32; 8] = [11.0, 12.0, 13.0, 14.0, 15.0, 16.0, 18.0, 20.0];
+
+fn font_size_label(size: f32) -> String {
+    if size.fract() == 0.0 {
+        format!("{size:.0} px")
+    } else {
+        format!("{size} px")
+    }
+}
+
 /// "Checked …" caption for the Providers page. Recomputed whenever the page
 /// redraws; precision beyond the minute is noise here.
 fn detection_checked_label(elapsed: Duration) -> String {
@@ -2347,7 +2507,7 @@ fn permission_status_row(
             .items_center()
             .gap(px(5.0))
             .cursor_default()
-            .text_size(px(10.0))
+            .text_size(sp(10.0))
             .text_color(theme.success)
             .child(icon("icons/check.svg", 12.0, theme.success))
             .child(tr!("computer_use.access_granted"))
@@ -2362,7 +2522,7 @@ fn permission_status_row(
             .flex()
             .items_center()
             .cursor_default()
-            .text_size(px(10.0))
+            .text_size(sp(10.0))
             .text_color(theme.text_secondary)
             .hover(|element| element.bg(theme.overlay).text_color(theme.text))
             .child(tr!("computer_use.grant_access"))
@@ -2385,7 +2545,7 @@ fn permission_status_row(
                 .min_w_0()
                 .child(
                     div()
-                        .text_size(px(11.5))
+                        .text_size(sp(11.5))
                         .font_weight(FontWeight::MEDIUM)
                         .text_color(theme.text)
                         .child(name),
@@ -2393,7 +2553,7 @@ fn permission_status_row(
                 .child(
                     div()
                         .mt(px(2.0))
-                        .text_size(px(10.0))
+                        .text_size(sp(10.0))
                         .text_color(theme.text_tertiary)
                         .child(description),
                 ),

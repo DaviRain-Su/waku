@@ -37,8 +37,8 @@ pub(super) struct DeployDialogState {
     selected_artifact: usize,
     selected_network: usize,
     selected_wallet: usize,
-    ctor_sig: Entity<ComposerInput>,
-    ctor_args: Entity<ComposerInput>,
+    ctor_sig: Entity<TextInput>,
+    ctor_args: Entity<TextInput>,
     deploying: bool,
     hosting: bool,
     result: Option<DeploymentRecord>,
@@ -64,16 +64,10 @@ impl Waku {
             self.show_toast(tr!("web3.deploy_no_workspace"));
             return;
         };
-        let ctor_sig = cx.new(|cx| {
-            ComposerInput::new(window, cx)
-                .search_field()
-                .placeholder(tr!("web3.ctor_sig_placeholder"))
-        });
-        let ctor_args = cx.new(|cx| {
-            ComposerInput::new(window, cx)
-                .search_field()
-                .placeholder(tr!("web3.ctor_args_placeholder"))
-        });
+        let ctor_sig =
+            cx.new(|cx| TextInput::new(window, cx).placeholder(tr!("web3.ctor_sig_placeholder")));
+        let ctor_args =
+            cx.new(|cx| TextInput::new(window, cx).placeholder(tr!("web3.ctor_args_placeholder")));
         self.deploy_dialog = Some(DeployDialogState {
             cwd: cwd.clone(),
             artifacts: None,

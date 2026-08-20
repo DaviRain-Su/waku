@@ -15,17 +15,17 @@ pub(super) enum WalletDialogKind {
 
 pub(super) struct NetworkDialog {
     editing_id: Option<String>,
-    name: Entity<ComposerInput>,
-    chain_id: Entity<ComposerInput>,
-    rpc_url: Entity<ComposerInput>,
-    explorer_url: Entity<ComposerInput>,
-    symbol: Entity<ComposerInput>,
+    name: Entity<TextInput>,
+    chain_id: Entity<TextInput>,
+    rpc_url: Entity<TextInput>,
+    explorer_url: Entity<TextInput>,
+    symbol: Entity<TextInput>,
 }
 
 pub(super) struct WalletDialog {
     kind: WalletDialogKind,
-    label: Entity<ComposerInput>,
-    second: Entity<ComposerInput>,
+    label: Entity<TextInput>,
+    second: Entity<TextInput>,
 }
 
 impl Waku {
@@ -493,11 +493,11 @@ impl Waku {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        let name = cx.new(|cx| ComposerInput::new(window, cx).search_field());
-        let chain_id = cx.new(|cx| ComposerInput::new(window, cx).search_field());
-        let rpc_url = cx.new(|cx| ComposerInput::new(window, cx).search_field());
-        let explorer_url = cx.new(|cx| ComposerInput::new(window, cx).search_field());
-        let symbol = cx.new(|cx| ComposerInput::new(window, cx).search_field());
+        let name = cx.new(|cx| TextInput::new(window, cx));
+        let chain_id = cx.new(|cx| TextInput::new(window, cx));
+        let rpc_url = cx.new(|cx| TextInput::new(window, cx));
+        let explorer_url = cx.new(|cx| TextInput::new(window, cx));
+        let symbol = cx.new(|cx| TextInput::new(window, cx));
         if let Some(network) = &existing {
             name.update(cx, |input, cx| input.set_content(network.name.clone(), cx));
             chain_id.update(cx, |input, cx| {
@@ -539,15 +539,9 @@ impl Waku {
         self.web3_wallet_dialog = Some(WalletDialog {
             kind,
             label: cx.new(|cx| {
-                ComposerInput::new(window, cx)
-                    .search_field()
-                    .placeholder(tr!("web3.wallet_label_placeholder"))
+                TextInput::new(window, cx).placeholder(tr!("web3.wallet_label_placeholder"))
             }),
-            second: cx.new(|cx| {
-                ComposerInput::new(window, cx)
-                    .search_field()
-                    .placeholder(second_placeholder)
-            }),
+            second: cx.new(|cx| TextInput::new(window, cx).placeholder(second_placeholder)),
         });
         cx.notify();
     }
@@ -969,7 +963,7 @@ fn wallet_dialog_copy(kind: WalletDialogKind) -> (String, String) {
     }
 }
 
-fn form_field(id: impl Into<ElementId>, input: Entity<ComposerInput>) -> Div {
+fn form_field(id: impl Into<ElementId>, input: Entity<TextInput>) -> Div {
     div().mt(px(8.0)).child(TextField::new(id, input).w_full())
 }
 

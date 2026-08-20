@@ -4,9 +4,9 @@ use super::*;
 use proofship_client::ship::{HostingProvider, HostingTokenStatus, McpServer, McpTransport};
 
 pub(super) struct McpDialog {
-    name: Entity<ComposerInput>,
-    endpoint: Entity<ComposerInput>,
-    args: Entity<ComposerInput>,
+    name: Entity<TextInput>,
+    endpoint: Entity<TextInput>,
+    args: Entity<TextInput>,
     transport: McpTransport,
 }
 
@@ -320,21 +320,9 @@ impl Waku {
             McpTransport::Stdio => (tr!("mcp.command_placeholder"), tr!("mcp.args_placeholder")),
         };
         self.mcp_dialog = Some(McpDialog {
-            name: cx.new(|cx| {
-                ComposerInput::new(window, cx)
-                    .search_field()
-                    .placeholder(tr!("mcp.name_placeholder"))
-            }),
-            endpoint: cx.new(|cx| {
-                ComposerInput::new(window, cx)
-                    .search_field()
-                    .placeholder(endpoint_placeholder)
-            }),
-            args: cx.new(|cx| {
-                ComposerInput::new(window, cx)
-                    .search_field()
-                    .placeholder(args_placeholder)
-            }),
+            name: cx.new(|cx| TextInput::new(window, cx).placeholder(tr!("mcp.name_placeholder"))),
+            endpoint: cx.new(|cx| TextInput::new(window, cx).placeholder(endpoint_placeholder)),
+            args: cx.new(|cx| TextInput::new(window, cx).placeholder(args_placeholder)),
             transport,
         });
         cx.notify();

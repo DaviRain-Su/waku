@@ -20,7 +20,18 @@ the original feature bullet instead of adding separate entries for them.
 - Add in-app preview wallet, balances, and a wallet network switcher
 - Add X Layer RPC fallbacks for signing and deployment
 - Bundle the ProofForge MCP gate on Linux and Windows
+
+## [0.1.11]
+
+- Highlight Markdown in the file editor, and toggle between source and a rendered preview
+- Add UI and code font size settings
+- macOS: Add "Open in.." button to open project folder in selected application
+
+## [0.1.10]
+
 - Add Kimi Code support
+- Add Oh My Pi support
+- Fix markdown table rendering
 
 ## [0.1.8]
 

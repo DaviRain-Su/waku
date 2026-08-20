@@ -1986,7 +1986,7 @@ impl Waku {
             let _ = waku.update(cx, |waku, cx| {
                 if waku.state.selected_session == Some(session_id) {
                     composer.update(cx, |input, cx| {
-                        if input.content().is_empty() {
+                        if input.content(cx).is_empty() {
                             input.set_content(prompt, cx);
                         }
                     });
@@ -2044,7 +2044,7 @@ impl Waku {
             return;
         };
 
-        let input = cx.new(|cx| ComposerInput::new(window, cx).padding_x(px(12.0)));
+        let input = cx.new(|cx| ComposerInput::new(window, cx).padding_x(px(12.0), cx));
         input.update(cx, |input, cx| input.set_content(initial_message, cx));
         cx.subscribe(
             &input,
@@ -2106,7 +2106,7 @@ impl Waku {
         let prompt = self
             .message_edit
             .as_ref()
-            .map(|edit| edit.input.read(cx).content().to_owned())
+            .map(|edit| edit.input.read(cx).content(cx).to_owned())
             .unwrap_or_default();
         self.submit_message_edit_prompt(prompt, cx);
     }

@@ -1179,6 +1179,11 @@ pub struct Waku {
     model_picker_highlight: Option<usize>,
     model_picker_scroll: ScrollHandle,
     model_picker_scrollbar: Rc<ScrollbarState>,
+    /// Focus for the picker's no-providers state. The panel takes focus on
+    /// open so `escape` has a focused descendant to dispatch up from, and
+    /// normally that is the filter field — which the empty state does not
+    /// draw, so its one button holds focus instead.
+    model_picker_empty_focus: FocusHandle,
     branch_search: Entity<ComposerInput>,
     branch_create_input: Entity<ComposerInput>,
     branch_picker_mode: BranchPickerMode,
@@ -2267,6 +2272,7 @@ impl Waku {
             let onboarding_add_project_focus = cx.focus_handle();
             let onboarding_projectless_focus = cx.focus_handle();
             let updater_button_focus = cx.focus_handle();
+            let model_picker_empty_focus = cx.focus_handle();
 
             cx.on_focus(&updater_button_focus, window, |this: &mut Self, _, cx| {
                 this.set_updater_button_focused(true, cx);
@@ -2767,6 +2773,7 @@ impl Waku {
                 model_picker_highlight: None,
                 model_picker_scroll: ScrollHandle::new(),
                 model_picker_scrollbar: ScrollbarState::new(),
+                model_picker_empty_focus,
                 branch_picker_mode: BranchPickerMode::Browse,
                 branch_picker_highlight: None,
                 branch_picker_list_state,

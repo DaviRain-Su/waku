@@ -1093,6 +1093,9 @@ common.close:
 common.default:
   en: Default
 
+composer.no_providers:
+  en: Install or switch on a provider to send
+
 models.none_found:
   en: No models found
 models.favorite_hint:
@@ -1101,6 +1104,14 @@ models.loading:
   en: Loading models…
 models.none_reported:
   en: No models reported by this provider
+models.no_providers:
+  en: No providers
+models.no_providers_title:
+  en: No providers available
+models.no_providers_description:
+  en: Install an agent CLI, or switch one back on in Provider settings.
+models.open_provider_settings:
+  en: Open Provider Settings
 models.choose:
   en: Choose model
 models.favorites:
@@ -1414,8 +1425,10 @@ errors.claude_fork_checkpoint_missing:
   en: Claude omitted the fork checkpoint
 errors.claude_turn_checkpoint_unavailable:
   en: "Claude's native checkpoint for that turn is unavailable: %{error}"
-errors.pi_session_file_unavailable:
-  en: Pi's native session file is unavailable
+errors.provider_session_file_unavailable:
+  en: "%{provider}'s native session file is unavailable"
+errors.provider_turn_branching_unsupported:
+  en: "%{provider} cannot rewind or branch a conversation at a turn"
 errors.fork_task:
   en: "Could not fork the task: %{error}"
 errors.create_rewind_snapshot:
@@ -1526,8 +1539,8 @@ errors.provider_rejected_prompt:
   en: "%{provider} rejected the prompt before it ran"
 errors.provider_complete_turn:
   en: "%{provider} could not complete this turn"
-errors.pi_reported_error:
-  en: Pi reported an error
+errors.provider_reported_error:
+  en: "%{provider} reported an error"
 
 session.response_unavailable:
   en: That response is no longer available

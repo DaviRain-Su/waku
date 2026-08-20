@@ -16,6 +16,8 @@ the original feature bullet instead of adding separate entries for them.
 
 ## [unreleased]
 
+- Add Kimi Code support
+
 ## [0.1.8]
 
 - Fix `PATH` resolution on Windows

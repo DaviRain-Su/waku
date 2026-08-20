@@ -52,6 +52,15 @@ impl Waku {
         if page == SettingsPage::Skills {
             self.ensure_skills_catalog(false, cx);
         }
+        if matches!(page, SettingsPage::Networks | SettingsPage::Wallets) {
+            self.ensure_web3_settings(false, cx);
+        }
+        if page == SettingsPage::Mcp {
+            self.ensure_mcp_settings(false, cx);
+        }
+        if page == SettingsPage::ProofForge {
+            self.ensure_pf_settings(false, cx);
+        }
         cx.notify();
     }
 

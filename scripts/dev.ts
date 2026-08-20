@@ -53,7 +53,7 @@ async function build(target: BuildTarget): Promise<boolean> {
 async function buildDaemon(): Promise<boolean> {
   console.log("[waku-dev] Building daemon...");
   const result =
-    await $`cargo build --package waku-daemon --features dev-binary --bin waku-debug-daemon`.nothrow();
+    await $`cargo build --package waku-daemon --features dev-binary --bin waku-debug-daemon --package waku-pf-mcp --bin waku-pf-mcp`.nothrow();
   if (result.exitCode !== 0) {
     console.error("[waku-dev] Daemon build failed; keeping the current daemon running.");
     return false;

@@ -23,7 +23,7 @@ const SETTINGS_SEARCH_CONTEXT: &str = "SettingsSidebar > ComposerInput";
 
 /// The sidebar's rows in display order, each with the keyword haystack the
 /// search field filters against.
-const SETTINGS_PAGES: [(SettingsPage, &str, &str, &str); 7] = [
+const SETTINGS_PAGES: [(SettingsPage, &str, &str, &str); 11] = [
     (
         SettingsPage::General,
         "settings.general",
@@ -49,6 +49,12 @@ const SETTINGS_PAGES: [(SettingsPage, &str, &str, &str); 7] = [
         "settings.skills_keywords",
     ),
     (
+        SettingsPage::Mcp,
+        "settings.mcp",
+        "icons/command.svg",
+        "settings.mcp_keywords",
+    ),
+    (
         SettingsPage::Usage,
         "settings.usage",
         "icons/chart-column.svg",
@@ -59,6 +65,24 @@ const SETTINGS_PAGES: [(SettingsPage, &str, &str, &str); 7] = [
         "settings.daemon",
         "icons/server.svg",
         "settings.daemon_keywords",
+    ),
+    (
+        SettingsPage::Networks,
+        "settings.networks",
+        "icons/globe.svg",
+        "settings.networks_keywords",
+    ),
+    (
+        SettingsPage::Wallets,
+        "settings.wallets",
+        "icons/lock.svg",
+        "settings.wallets_keywords",
+    ),
+    (
+        SettingsPage::ProofForge,
+        "settings.proofforge",
+        "icons/hexagon.svg",
+        "settings.proofforge_keywords",
     ),
     (
         SettingsPage::ComputerUse,
@@ -375,8 +399,12 @@ impl Waku {
                         SettingsPage::General => tr!("settings.general"),
                         SettingsPage::Providers => tr!("settings.providers"),
                         SettingsPage::Skills => tr!("settings.skills"),
+                        SettingsPage::Mcp => tr!("settings.mcp"),
                         SettingsPage::Usage => tr!("settings.usage"),
                         SettingsPage::Daemon => tr!("settings.daemon"),
+                        SettingsPage::Networks => tr!("settings.networks"),
+                        SettingsPage::Wallets => tr!("settings.wallets"),
+                        SettingsPage::ProofForge => tr!("settings.proofforge"),
                         SettingsPage::ComputerUse => tr!("settings.computer_use"),
                         SettingsPage::Appearance => tr!("settings.appearance"),
                     }),
@@ -385,8 +413,12 @@ impl Waku {
                 SettingsPage::General => self.render_general_settings(cx),
                 SettingsPage::Providers => self.render_providers_settings(cx),
                 SettingsPage::Skills => self.render_skills_settings(cx),
+                SettingsPage::Mcp => self.render_mcp_settings(cx),
                 SettingsPage::Usage => self.render_usage_settings(cx),
                 SettingsPage::Daemon => self.render_daemon_settings(cx),
+                SettingsPage::Networks => self.render_networks_settings(cx),
+                SettingsPage::Wallets => self.render_wallets_settings(cx),
+                SettingsPage::ProofForge => self.render_pf_settings(cx),
                 SettingsPage::ComputerUse => self.render_computer_use_settings(cx),
                 SettingsPage::Appearance => self.render_appearance_settings(cx),
             });

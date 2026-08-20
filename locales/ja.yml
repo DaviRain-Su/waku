@@ -66,9 +66,31 @@ settings.appearance_keywords: 外観 テーマ システム ライト ダーク 
 settings.providers_keywords: プロバイダー エージェント モデル CLI バージョン インストール 検出 claude codex cursor opencode amp grok pi
 settings.skills: スキル
 settings.skills_keywords: スキル ライブラリ エージェント 無効 有効 削除 claude codex cursor opencode pi amp 共有
+settings.mcp: MCP
+settings.mcp_keywords: mcp サーバー github cloudflare vercel http stdio oauth カタログ プレビュー ホスティング トークン
 settings.usage_keywords: 使用状況 トークン コスト 支出 キャッシュ 日別 グラフ モデル 内訳 履歴 claude codex
 settings.daemon_keywords: デーモン サーバー リモート ウェブ ネットワーク 公開 オリジン トークン ポート websocket
 settings.computer_use_keywords: コンピュータ 操作 画面収録 アクセシビリティ アプリ 制御 codex
+settings.networks: ネットワーク
+settings.wallets: ウォレット
+settings.networks_keywords: ネットワーク evm rpc チェーン エクスプローラー xlayer sepolia base okx onchainos web3 デプロイ
+settings.wallets_keywords: ウォレット 鍵 ローカル インポート ウォッチ devenvkey hex バックアップ 署名 web3
+settings.proofforge: ProofForge
+settings.proofforge_keywords: proofforge proof forge コンパイラ lean ゲート ツールチェーン インストール evm solc
+pf.loading: ProofForge を確認中…
+pf.description_title: コンパイラ
+pf.description: ProofForge は ProgramV1 コントラクトの機械ゲートです。コンパイラと check/build であり、形式検証ではありません。ここで入れると、以降の新規 run が起草・ゲート通過し、Waku がデプロイできる .bin を出せます。
+pf.state_missing: 未インストール
+pf.state_installing: インストール中
+pf.state_ready: 準備完了
+pf.source_host: このコンピュータ
+pf.source_managed: Waku がインストール
+pf.evm_ready: EVM ツール準備完了
+pf.evm_missing: コンパイラは準備完了、EVM ツール未導入
+pf.install: ProofForge をインストール
+pf.installing: インストール中…
+pf.uninstall: 削除
+pf.ready_toast: ProofForge の準備ができました
 settings.back: 戻る
 settings.search: 設定を検索
 daemon.expose_title: 管理対象デーモンを公開
@@ -260,6 +282,99 @@ common.copy_selection: 選択範囲をコピー
 common.copy_to_composer: 入力欄にコピー
 common.copy_code: コードをコピー
 common.cancel: キャンセル
+web3.loading: ネットワークとウォレットを読み込み中…
+web3.okx_title: OKX OnchainOS
+web3.okx_description: OnchainOS MCP 用の任意の API キー。キーはこのコンピュータにだけ保存され、RPC では返しません。
+web3.okx_key_placeholder: OnchainOS API キー
+web3.save_key: キーを保存
+web3.okx_not_configured: キー未設定
+web3.add_network: ネットワークを追加
+web3.edit_network: ネットワークを編集
+web3.builtin: 組み込み
+web3.edit: 編集
+web3.remove: 削除
+web3.save: 保存
+web3.invalid_chain_id: チェーン ID は数値である必要があります
+web3.create_wallet: ローカルを作成
+web3.import_wallet: 16進をインポート
+web3.watch_wallet: ウォッチのみ
+web3.env_wallet: 開発用環境変数
+web3.add_wallet: ウォレットを追加
+web3.backup_key: 今すぐこのキーをバックアップ
+web3.backup_key_description: この 16 進キーは一度だけ表示されます。Waku は再表示しません。デプロイ前に X Layer テストネットのフォーセットでアドレスに OKB を入れてください。
+web3.source_local: ローカル
+web3.source_watch: ウォッチのみ
+web3.source_env: 開発用環境変数
+web3.source_walletconnect: WalletConnect（旧）
+web3.deploy: デプロイ
+web3.deploy_title: デプロイ
+web3.deploy_description: このセッションの作業ツリーからゲート通過済みの .bin を探し、作成トランザクションに署名します。
+web3.deploy_no_workspace: デプロイする前に、プロジェクトフォルダのあるセッションを選んでください
+web3.deploy_no_artifact: このセッションに密封成果物がありません。エージェントに ProofForge ゲート（pf_check → pf_build）を実行させてから再スキャンしてください。
+web3.deploy_install_pf: ProofForge が未インストールです。設定 → ProofForge でインストールしてください。
+web3.rescan: 再スキャン
+web3.faucet: X Layer フォーセットでテストネット OKB を入手
+web3.open_explorer: エクスプローラーで開く
+web3.deploy_no_network: 先に設定 → ネットワークでネットワークを有効にしてください
+web3.deploy_no_wallet: 先に設定 → ウォレットで署名用ウォレットを作成またはインポートしてください
+web3.artifact: 成果物
+web3.network: ネットワーク
+web3.wallet: ウォレット
+web3.ctor_sig_placeholder: コンストラクタ署名（任意）
+web3.ctor_args_placeholder: コンストラクタ引数（カンマ区切り）
+web3.deploying: デプロイ中…
+web3.deploy_history: 最近のデプロイ
+mcp.loading: MCP サーバーを読み込み中…
+mcp.description_title: カタログ
+mcp.description: 有効にしたサーバーは以降のすべての新規 run に接続されます。「承認」でシステムのブラウザからログインします。GitHub はログイン済みの GitHub CLI を優先します。行にトークン欄はありません。
+mcp.builtin: 組み込み
+mcp.custom: カスタム
+mcp.source_okx: Web3 が接続済み
+mcp.source_pf: Web3 が接続済み
+mcp.authorize: 承認
+mcp.disconnect: 切断
+mcp.auth_needed: ログインが必要
+mcp.auth_authorized: 接続済み
+mcp.auth_public: ログイン不要
+mcp.auth_none: ローカル
+mcp.public_no_login: このサーバーはアカウント不要です
+mcp.signed_in: 接続済み
+mcp.github_token_title: GitHub トークン
+mcp.github_token_hint: GitHub は未知のアプリの登録を許可しません。GitHub CLI にログインしていない場合は、ブラウザでトークンを作成してここに貼り付けてください。
+mcp.github_token_placeholder: ghp_… または github_pat_…
+mcp.github_token_save: トークンを保存
+mcp.github_token_required: ブラウザで作成した GitHub トークンを貼り付けてください
+mcp.add: 追加
+mcp.add_http: HTTP を追加
+mcp.add_stdio: stdio を追加
+mcp.add_http_hint: MCP URL を貼り付けます。ログインが必要なら「承認」でシステムのブラウザを開きます。
+mcp.add_stdio_hint: ローカル MCP コマンドを実行します。引数は空白区切りです。
+mcp.remove: 削除
+mcp.name_placeholder: 名前
+mcp.url_placeholder: https://…
+mcp.command_placeholder: コマンド
+mcp.args_placeholder: 引数（任意）
+mcp.cloudflare_token: Cloudflare デプロイトークン
+mcp.cloudflare_token_description: ワンクリックの Pages / Workers 用の任意 wrangler トークンです。MCP ヘッダーには使いません。
+mcp.cloudflare_token_placeholder: Cloudflare API トークン
+mcp.vercel_token: Vercel デプロイトークン
+mcp.vercel_token_description: ワンクリックデプロイ用の任意 Vercel トークンです。MCP ヘッダーには使いません。
+mcp.vercel_token_placeholder: Vercel トークン
+mcp.save_token: トークンを保存
+mcp.token_not_configured: トークン未保存
+preview.button: プレビュー
+preview.scanning: ローカルフロントエンドを検索中…
+preview.none: フロントエンドが見つかりません
+preview.no_workspace: プレビューする前に、プロジェクトフォルダのあるセッションを選んでください
+ship.title: シップ
+ship.description: フロントエンドのプレビューまたはホスティングと、ゲート通過済みコントラクトのデプロイ。どちらか一方だけでも送れます。
+ship.frontend: フロントエンド
+ship.contract: コントラクト
+ship.cloudflare: Cloudflare にホスト
+ship.vercel: Vercel にホスト
+ship.hosting: ホスティング中…
+ship.hosting_token_hint: ワンクリックホストには設定 → MCP に Cloudflare または Vercel トークンを保存します。MCP を有効にしてエージェントに任せることもできます。
+ship.history: 最近のシップ
 common.send: 送信
 
 session.fork_task: タスクをフォーク

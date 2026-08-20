@@ -61,9 +61,9 @@ fi
 debug_adhoc_requirement="=designated => identifier \"$bundle_identifier\""
 if [ "${WAKU_SKIP_CARGO_BUILD:-0}" != "1" ]; then
   if [ "$profile" = "release" ]; then
-    cargo build --release --package waku --bin waku --bin waku_js_repl --package waku-daemon --bin waku-daemon
+    cargo build --release --package waku --bin waku --bin waku_js_repl --package waku-daemon --bin waku-daemon --package waku-pf-mcp --bin waku-pf-mcp
   else
-    cargo build --package waku --bin waku --bin waku_js_repl
+    cargo build --package waku --bin waku --bin waku_js_repl --package waku-pf-mcp --bin waku-pf-mcp
   fi
 fi
 
@@ -155,6 +155,8 @@ mkdir -p "$contents/MacOS" "$contents/Resources/computer-use" "$contents/Resourc
 cp "$cargo_target_dir/$profile/waku" "$contents/MacOS/$app_name"
 cp "$cargo_target_dir/$profile/waku_js_repl" "$repl_executable"
 chmod 755 "$repl_executable"
+cp "$cargo_target_dir/$profile/waku-pf-mcp" "$contents/MacOS/waku-pf-mcp"
+chmod 755 "$contents/MacOS/waku-pf-mcp"
 if [ "$profile" = "release" ]; then
   cp "$cargo_target_dir/$profile/waku-daemon" "$daemon_executable"
   chmod 755 "$daemon_executable"

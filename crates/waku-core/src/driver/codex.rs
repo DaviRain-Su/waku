@@ -219,6 +219,7 @@ impl CodexDriver {
         let mut command = crate::command_env::command(&binary);
         command.args(["app-server", "--stdio"]);
         configure_computer_use_command(&mut command, computer_use.as_ref());
+        crate::web3::attach_codex_mcp(&mut command);
         let command = command
             .current_dir(&cwd)
             .stdin(Stdio::piped())

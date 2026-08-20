@@ -9,6 +9,13 @@ readme = "README.md"
 [dependencies]
 agent-client-protocol = "2.0.0"
 alacritty_terminal = { version = "0.26", default-features = false }
+alloy = { version = "1.0", default-features = false, features = [
+    "reqwest",
+    "providers",
+    "signer-local",
+    "rpc-types",
+    "dyn-abi",
+] }
 anyhow = "1.0"
 base64 = "0.22"
 chrono = { version = "0.4", features = ["serde"] }
@@ -16,12 +23,15 @@ crossbeam-channel = "0.5"
 dirs = "6.0"
 nucleo-matcher = "0.3"
 parking_lot = "0.12"
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "json", "blocking"] }
+sha2 = "0.10"
 rust-i18n = "4"
 rusqlite = { version = "0.37", features = ["bundled"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 smol = "2"
 subtle = "2"
+tokio = { version = "1", features = ["rt", "time", "net", "io-util"] }
 toml = "0.8"
 trash = "5.2.6"
 tungstenite = { version = "0.30", default-features = false, features = ["handshake"] }
@@ -41,4 +51,5 @@ objc2-foundation = { version = "0.3", default-features = false, features = [
 ] }
 
 [dev-dependencies]
+tempfile = "3"
 waku-client = { path = "../waku-client" }

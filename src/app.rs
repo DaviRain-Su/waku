@@ -9,8 +9,9 @@ use std::time::{Duration, Instant};
 use chrono::{DateTime, Local, Utc};
 use crossbeam_channel::{Receiver, Sender, unbounded};
 use gpui::{
-    Animation, AnimationExt, AnyElement, App, Bounds, ClipboardEntry, ClipboardItem, Context, Div,
-    Entity, ExternalPaths, FocusHandle, Focusable, FontWeight, Hsla, IntoElement, KeyDownEvent,
+    Animation, AnimationExt, AnyElement, App, Bounds, ClickEvent, ClipboardEntry, ClipboardItem,
+    Context, Div, ElementId, Entity, ExternalPaths, FocusHandle, Focusable, FontWeight, Hsla,
+    IntoElement, KeyDownEvent,
     ListAlignment, ListOffset, ListState, MouseButton, MouseDownEvent, MouseMoveEvent,
     MouseUpEvent, NavigationDirection, ObjectFit, PathPromptOptions, Pixels, Render, ScrollHandle,
     SharedString, Stateful, StyleRefinement, TextRun, WeakEntity, Window, WindowBounds, canvas,
@@ -217,6 +218,10 @@ enum SettingsPage {
     Skills,
     Usage,
     Daemon,
+    Networks,
+    Wallets,
+    ProofForge,
+    Mcp,
     ComputerUse,
     Appearance,
 }
@@ -1192,6 +1197,37 @@ pub struct Waku {
     /// Window-modal Git commit/push UI. Its repository snapshot is filled
     /// off-thread; frames only read this in-memory value.
     commit_dialog: Option<commit_dialog::CommitDialogState>,
+    /// Window-modal Web3 deploy UI. Artifact scan and signing run off-thread;
+    /// frames only read this in-memory value.
+    deploy_dialog: Option<deploy_dialog::DeployDialogState>,
+    web3_networks: Option<Vec<waku_client::web3::EvmNetwork>>,
+    web3_wallets: Option<Vec<waku_client::web3::WalletAccount>>,
+    web3_okx: Option<waku_client::web3::OkxStatus>,
+    web3_generation: u64,
+    web3_pending: bool,
+    web3_error: Option<String>,
+    web3_network_dialog: Option<web3_settings::NetworkDialog>,
+    web3_wallet_dialog: Option<web3_settings::WalletDialog>,
+    web3_backup_hex: Option<String>,
+    web3_okx_input: Entity<ComposerInput>,
+    mcp_servers: Option<Vec<waku_client::ship::McpServer>>,
+    mcp_tokens: Option<Vec<waku_client::ship::HostingTokenStatus>>,
+    mcp_generation: u64,
+    mcp_pending: bool,
+    mcp_error: Option<String>,
+    mcp_dialog: Option<mcp_settings::McpDialog>,
+    mcp_github_token_for: Option<String>,
+    mcp_cf_input: Entity<ComposerInput>,
+    mcp_vercel_input: Entity<ComposerInput>,
+    mcp_github_input: Entity<ComposerInput>,
+    pf_status: Option<waku_client::web3::PfToolchainStatus>,
+    pf_generation: u64,
+    pf_pending: bool,
+    pf_error: Option<String>,
+    preview_detect: Option<waku_client::ship::FrontendDetect>,
+    preview_status: Option<waku_client::ship::PreviewStatus>,
+    preview_generation: u64,
+    pending_preview_url: Option<String>,
     /// Commit-message generation and Git mutation outlive the modal that
     /// started them. Keeping the operation on the app also lets every
     /// Environment surface reflect and gate the same in-flight action.
@@ -1536,6 +1572,10 @@ mod branches;
 mod command_palette;
 mod commit_dialog;
 mod components;
+mod deploy_dialog;
+mod mcp_settings;
+mod pf_settings;
+mod preview;
 mod composer;
 mod drafts;
 mod file_search;
@@ -1552,6 +1592,7 @@ mod transcript;
 mod transcript_view;
 mod usage_meter;
 mod usage_page;
+mod web3_settings;
 mod window_chrome;
 
 pub use autocomplete::init as init_composer_autocomplete;
@@ -1561,6 +1602,7 @@ use background_work::{
 pub use command_palette::init as init_command_palette;
 pub use commit_dialog::init as init_commit_dialog_keys;
 use components::*;
+pub use deploy_dialog::init as init_deploy_dialog_keys;
 pub use image_preview::init as init_image_preview_keys;
 pub use settings::init as init_settings_keys;
 pub use sidebar::init as init_sidebar_keys;
@@ -1940,6 +1982,26 @@ impl Waku {
                 .search_field()
                 .placeholder(tr!("input.filter_projects"))
         });
+        let web3_okx_input = cx.new(|cx| {
+            ComposerInput::new(window, cx)
+                .search_field()
+                .placeholder(tr!("web3.okx_key_placeholder"))
+        });
+        let mcp_cf_input = cx.new(|cx| {
+            ComposerInput::new(window, cx)
+                .search_field()
+                .placeholder(tr!("mcp.cloudflare_token_placeholder"))
+        });
+        let mcp_vercel_input = cx.new(|cx| {
+            ComposerInput::new(window, cx)
+                .search_field()
+                .placeholder(tr!("mcp.vercel_token_placeholder"))
+        });
+        let mcp_github_input = cx.new(|cx| {
+            ComposerInput::new(window, cx)
+                .search_field()
+                .placeholder(tr!("mcp.github_token_placeholder"))
+        });
         let right_panel_diff_filter = cx.new(|cx| {
             ComposerInput::new(window, cx)
                 .search_field()
@@ -2258,6 +2320,18 @@ impl Waku {
                     // back to the window is the moment to re-read them.
                     if this.settings_page == Some(SettingsPage::Skills) {
                         this.ensure_skills_catalog(true, cx);
+                    }
+                    if matches!(
+                        this.settings_page,
+                        Some(SettingsPage::Networks | SettingsPage::Wallets)
+                    ) {
+                        this.ensure_web3_settings(true, cx);
+                    }
+                    if this.settings_page == Some(SettingsPage::Mcp) {
+                        this.ensure_mcp_settings(true, cx);
+                    }
+                    if this.settings_page == Some(SettingsPage::ProofForge) {
+                        this.ensure_pf_settings(true, cx);
                     }
                 }
             })
@@ -2701,6 +2775,35 @@ impl Waku {
                 visible_branch_snapshot: None,
                 branch_operation_pending: false,
                 commit_dialog: None,
+                deploy_dialog: None,
+                web3_networks: None,
+                web3_wallets: None,
+                web3_okx: None,
+                web3_generation: 0,
+                web3_pending: false,
+                web3_error: None,
+                web3_network_dialog: None,
+                web3_wallet_dialog: None,
+                web3_backup_hex: None,
+                web3_okx_input,
+                mcp_servers: None,
+                mcp_tokens: None,
+                mcp_generation: 0,
+                mcp_pending: false,
+                mcp_error: None,
+                mcp_dialog: None,
+                mcp_github_token_for: None,
+                mcp_cf_input,
+                mcp_vercel_input,
+                mcp_github_input,
+                pf_status: None,
+                pf_generation: 0,
+                pf_pending: false,
+                pf_error: None,
+                preview_detect: None,
+                preview_status: None,
+                preview_generation: 0,
+                pending_preview_url: None,
                 commit_operation: None,
                 // Providers × workspaces; both scans are small, the cache
                 // only exists to keep them off the frame path.

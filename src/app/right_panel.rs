@@ -856,7 +856,7 @@ fn read_right_panel_file(
 }
 
 impl RightPanelSurface {
-    fn new_browser() -> Self {
+    pub(super) fn new_browser() -> Self {
         Self::Browser(Uuid::new_v4())
     }
 
@@ -871,7 +871,7 @@ impl RightPanelSurface {
         }
     }
 
-    fn browser_id(&self) -> Option<Uuid> {
+    pub(super) fn browser_id(&self) -> Option<Uuid> {
         match self {
             Self::Browser(id) => Some(*id),
             _ => None,
@@ -1851,12 +1851,12 @@ impl Waku {
         self.right_panel_diff_list_state.reset(line_count);
     }
 
-    fn reveal_right_panel_tab(&mut self, index: usize) {
+    pub(super) fn reveal_right_panel_tab(&mut self, index: usize) {
         self.right_panel_pending_tab_reveal = Some(index);
         self.right_panel_tabs_scroll_handle.scroll_to_item(index);
     }
 
-    fn active_right_panel_surface(&self) -> Option<&RightPanelSurface> {
+    pub(super) fn active_right_panel_surface(&self) -> Option<&RightPanelSurface> {
         self.right_panel_active_surface
             .and_then(|index| self.right_panel_surfaces.get(index))
     }
@@ -2202,6 +2202,7 @@ impl Waku {
         cx.observe(&browser, |_, _, cx| cx.notify()).detach();
         self.right_panel_browsers
             .insert(browser_id, browser.clone());
+        self.apply_pending_preview_url(cx);
         browser
     }
 

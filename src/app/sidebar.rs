@@ -289,6 +289,72 @@ impl Waku {
             )
     }
 
+    fn render_preview_button(&self, cx: &mut Context<Self>) -> Stateful<Div> {
+        let theme = Theme::current(cx);
+        div()
+            .id("header-preview")
+            .tab_index(0)
+            .focus_visible(|style| style.border_1().border_color(theme.accent))
+            .h(px(26.0))
+            .px(px(8.0))
+            .flex_none()
+            .rounded(px(6.0))
+            .flex()
+            .items_center()
+            .gap(px(5.0))
+            .cursor_default()
+            .hover(|element| element.bg(theme.overlay))
+            .active(|element| element.bg(theme.overlay_strong))
+            .child(icon("icons/globe.svg", 13.0, theme.text_tertiary))
+            .child(
+                div()
+                    .text_size(px(12.0))
+                    .font_weight(FontWeight::MEDIUM)
+                    .text_color(theme.text_secondary)
+                    .child(tr!("preview.button")),
+            )
+            .on_mouse_down(MouseButton::Left, |_, _, cx| {
+                cx.stop_propagation();
+            })
+            .on_click(cx.listener(|this, _, _, cx| {
+                cx.stop_propagation();
+                this.start_local_preview(cx);
+            }))
+    }
+
+    fn render_deploy_button(&self, cx: &mut Context<Self>) -> Stateful<Div> {
+        let theme = Theme::current(cx);
+        div()
+            .id("header-deploy")
+            .tab_index(0)
+            .focus_visible(|style| style.border_1().border_color(theme.accent))
+            .h(px(26.0))
+            .px(px(8.0))
+            .flex_none()
+            .rounded(px(6.0))
+            .flex()
+            .items_center()
+            .gap(px(5.0))
+            .cursor_default()
+            .hover(|element| element.bg(theme.overlay))
+            .active(|element| element.bg(theme.overlay_strong))
+            .child(icon("icons/hexagon.svg", 13.0, theme.text_tertiary))
+            .child(
+                div()
+                    .text_size(px(12.0))
+                    .font_weight(FontWeight::MEDIUM)
+                    .text_color(theme.text_secondary)
+                    .child(tr!("web3.deploy")),
+            )
+            .on_mouse_down(MouseButton::Left, |_, _, cx| {
+                cx.stop_propagation();
+            })
+            .on_click(cx.listener(|this, _, window, cx| {
+                cx.stop_propagation();
+                this.open_deploy_dialog(window, cx);
+            }))
+    }
+
     fn render_sidebar_toggle(&self, cx: &mut Context<Self>) -> Stateful<Div> {
         let theme = Theme::current(cx);
         div()
@@ -1347,6 +1413,12 @@ impl Waku {
                 ),
             )
             .child(self.render_background_work_summary(cx))
+            .when(self.preview_available(), |element| {
+                element.child(self.render_preview_button(cx))
+            })
+            .when(self.selected_session().is_some(), |element| {
+                element.child(self.render_deploy_button(cx))
+            })
             .when(!self.right_panel_visible, |element| {
                 element
                     .when(self.fps_counter_visible, |element| {

@@ -636,6 +636,12 @@ impl Waku {
                 "settings preferences skills library create disable agent skill",
             ),
             (
+                SettingsPage::Mcp,
+                "settings.mcp",
+                "icons/command.svg",
+                "settings preferences mcp github cloudflare vercel http stdio oauth catalog servers",
+            ),
+            (
                 SettingsPage::Usage,
                 "settings.usage",
                 "icons/chart-column.svg",
@@ -646,6 +652,24 @@ impl Waku {
                 "settings.daemon",
                 "icons/server.svg",
                 "settings preferences daemon server remote web network origin token port",
+            ),
+            (
+                SettingsPage::Networks,
+                "settings.networks",
+                "icons/globe.svg",
+                "settings preferences networks evm rpc xlayer sepolia okx onchainos",
+            ),
+            (
+                SettingsPage::Wallets,
+                "settings.wallets",
+                "icons/lock.svg",
+                "settings preferences wallets keys local import watch devenvkey",
+            ),
+            (
+                SettingsPage::ProofForge,
+                "settings.proofforge",
+                "icons/hexagon.svg",
+                "settings preferences proofforge proof forge compiler lean gate toolchain install",
             ),
             (
                 SettingsPage::ComputerUse,

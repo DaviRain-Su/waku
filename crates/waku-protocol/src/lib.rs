@@ -45,6 +45,8 @@ pub mod skills;
 pub mod theme;
 pub mod usage;
 pub mod usage_history;
+pub mod ship;
+pub mod web3;
 pub mod workspace;
 
 mod protocol;

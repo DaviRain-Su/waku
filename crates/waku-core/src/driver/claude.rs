@@ -217,6 +217,7 @@ impl ClaudeDriver {
         } else {
             command.args(["--session-id", &session_id]);
         }
+        crate::web3::attach_claude_mcp(&mut command);
 
         let command = command
             .stdin(Stdio::piped())

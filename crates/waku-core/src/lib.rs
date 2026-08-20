@@ -42,11 +42,13 @@ pub mod opencode_session;
 pub mod persistence;
 pub mod projectless;
 pub mod settings;
+pub mod ship;
 pub mod skills;
 pub mod terminal;
 pub mod theme;
 pub mod usage;
 pub mod usage_history;
+pub mod web3;
 pub mod workspace;
 pub mod worktree;
 

@@ -62,9 +62,31 @@ settings.appearance_keywords: 外观 主题 系统 浅色 深色 语言 英语 �
 settings.providers_keywords: 服务商 智能体 模型 命令行 版本 安装 检测 claude codex cursor opencode amp grok pi
 settings.skills: 技能
 settings.skills_keywords: 技能 技能库 智能体 禁用 启用 删除 claude codex cursor opencode pi amp 共享
+settings.mcp: MCP
+settings.mcp_keywords: mcp 服务器 github cloudflare vercel http stdio oauth 目录 预览 托管 令牌
 settings.usage_keywords: 用量 令牌 费用 支出 缓存 每日 图表 模型 明细 历史 claude codex
 settings.daemon_keywords: 守护进程 服务 远程 网页 网络 暴露 来源 令牌 端口 websocket
 settings.computer_use_keywords: 电脑操作 屏幕录制 辅助功能 应用 控制 codex
+settings.networks: 网络
+settings.wallets: 钱包
+settings.networks_keywords: 网络 evm rpc 链 浏览器 xlayer sepolia base okx onchainos web3 部署
+settings.wallets_keywords: 钱包 密钥 本地 导入 观察 devenvkey hex 备份 签名 web3
+settings.proofforge: ProofForge
+settings.proofforge_keywords: proofforge proof forge 编译器 lean 门禁 工具链 安装 evm solc
+pf.loading: 正在检查 ProofForge…
+pf.description_title: 编译器
+pf.description: ProofForge 是 ProgramV1 合约的机器门禁——编译器加 check/build，不是形式化验证。在这里安装后，之后的新 run 才能起草、过门禁，并产出 Waku 可部署的 .bin。
+pf.state_missing: 未安装
+pf.state_installing: 正在安装
+pf.state_ready: 已就绪
+pf.source_host: 本机已有
+pf.source_managed: 由 Waku 安装
+pf.evm_ready: EVM 工具已就绪
+pf.evm_missing: 编译器已就绪，EVM 工具未装
+pf.install: 安装 ProofForge
+pf.installing: 正在安装…
+pf.uninstall: 移除
+pf.ready_toast: ProofForge 已就绪
 settings.back: 返回
 settings.search: 搜索设置
 daemon.expose_title: 暴露由 Waku 管理的守护进程
@@ -245,6 +267,99 @@ common.copy_selection: 复制所选内容
 common.copy_to_composer: 复制到输入框
 common.copy_code: 复制代码
 common.cancel: 取消
+web3.loading: 正在加载网络和钱包…
+web3.okx_title: OKX OnchainOS
+web3.okx_description: 可选的 OnchainOS MCP API 密钥。密钥只保存在这台电脑上，不会通过 RPC 返回。
+web3.okx_key_placeholder: OnchainOS API 密钥
+web3.save_key: 保存密钥
+web3.okx_not_configured: 尚未保存密钥
+web3.add_network: 添加网络
+web3.edit_network: 编辑网络
+web3.builtin: 内置
+web3.edit: 编辑
+web3.remove: 删除
+web3.save: 保存
+web3.invalid_chain_id: 链 ID 必须是数字
+web3.create_wallet: 创建本地钱包
+web3.import_wallet: 导入十六进制
+web3.watch_wallet: 仅观察
+web3.env_wallet: 开发环境变量
+web3.add_wallet: 添加钱包
+web3.backup_key: 立即备份此密钥
+web3.backup_key_description: 此十六进制密钥只显示一次，之后 Waku 不会再展示。部署前请先到 X Layer 测试网水龙头给该地址打 OKB。
+web3.source_local: 本地
+web3.source_watch: 仅观察
+web3.source_env: 开发环境变量
+web3.source_walletconnect: WalletConnect（旧）
+web3.deploy: 部署
+web3.deploy_title: 部署
+web3.deploy_description: 扫描此会话工作区中通过门禁的 .bin，然后签名创建交易。
+web3.deploy_no_workspace: 请先选择带有项目文件夹的会话再部署
+web3.deploy_no_artifact: 此会话下没有密封产物。请让智能体跑完 ProofForge 门禁（pf_check → pf_build），然后重新扫描。
+web3.deploy_install_pf: 尚未安装 ProofForge。打开设置 → ProofForge 进行安装。
+web3.rescan: 重新扫描
+web3.faucet: 从 X Layer 水龙头领取测试网 OKB
+web3.open_explorer: 在浏览器中打开
+web3.deploy_no_network: 请先在设置 → 网络中启用一个网络
+web3.deploy_no_wallet: 请先在设置 → 钱包中创建或导入可签名钱包
+web3.artifact: 产物
+web3.network: 网络
+web3.wallet: 钱包
+web3.ctor_sig_placeholder: 构造函数签名（可选）
+web3.ctor_args_placeholder: 构造函数参数，逗号分隔
+web3.deploying: 正在部署…
+web3.deploy_history: 最近部署
+mcp.loading: 正在加载 MCP 服务器…
+mcp.description_title: 目录
+mcp.description: 打开后会挂到之后每个新 run。点「授权」会用系统浏览器登录。GitHub 会优先使用本机已登录的 GitHub CLI。行上没有令牌输入框。
+mcp.builtin: 内置
+mcp.custom: 自定义
+mcp.source_okx: 已由 Web3 挂上
+mcp.source_pf: 已由 Web3 挂上
+mcp.authorize: 授权
+mcp.disconnect: 断开
+mcp.auth_needed: 需要登录
+mcp.auth_authorized: 已连接
+mcp.auth_public: 无需登录
+mcp.auth_none: 本地
+mcp.public_no_login: 这个服务器不需要账号
+mcp.signed_in: 已连接
+mcp.github_token_title: GitHub 令牌
+mcp.github_token_hint: GitHub 不让未知应用注册。如果本机 GitHub CLI 未登录，请在浏览器里创建令牌并粘贴到这里。
+mcp.github_token_placeholder: ghp_… 或 github_pat_…
+mcp.github_token_save: 保存令牌
+mcp.github_token_required: 请粘贴浏览器里生成的 GitHub 令牌
+mcp.add: 添加
+mcp.add_http: 添加 HTTP
+mcp.add_stdio: 添加 stdio
+mcp.add_http_hint: 粘贴 MCP URL。服务器需要登录时，点「授权」会打开系统浏览器。
+mcp.add_stdio_hint: 运行本地 MCP 命令。参数用空格分隔。
+mcp.remove: 删除
+mcp.name_placeholder: 名称
+mcp.url_placeholder: https://…
+mcp.command_placeholder: 命令
+mcp.args_placeholder: 参数（可选）
+mcp.cloudflare_token: Cloudflare 部署令牌
+mcp.cloudflare_token_description: 可选的 wrangler 令牌，用于一键 Pages / Workers。不会填进 MCP header。
+mcp.cloudflare_token_placeholder: Cloudflare API 令牌
+mcp.vercel_token: Vercel 部署令牌
+mcp.vercel_token_description: 可选的 Vercel 令牌，用于一键部署。不会填进 MCP header。
+mcp.vercel_token_placeholder: Vercel 令牌
+mcp.save_token: 保存令牌
+mcp.token_not_configured: 尚未保存令牌
+preview.button: 预览
+preview.scanning: 正在查找本地前端…
+preview.none: 未发现前端
+preview.no_workspace: 请先选择带有项目文件夹的会话再预览
+ship.title: 发布
+ship.description: 预览或托管前端，并部署通过门禁的合约。可以只发其中一段。
+ship.frontend: 前端
+ship.contract: 合约
+ship.cloudflare: 托管到 Cloudflare
+ship.vercel: 托管到 Vercel
+ship.hosting: 正在托管…
+ship.hosting_token_hint: 在设置 → MCP 中保存 Cloudflare 或 Vercel 令牌即可一键托管。也可以打开对应 MCP，让智能体去部署。
+ship.history: 最近发布
 common.send: 发送
 session.fork_task: 从此处派生任务
 session.fork_task_title: 从此处派生任务

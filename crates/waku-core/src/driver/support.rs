@@ -125,6 +125,7 @@ fn build_opencode_computer_use_config(
             },
         }),
     );
+    crate::web3::merge_opencode_mcp(mcp);
     let instructions = root
         .entry("instructions")
         .or_insert_with(|| serde_json::json!([]))
@@ -278,6 +279,7 @@ fn build_grok_computer_use_toml(
     server.insert("env".into(), toml::Value::Table(environment));
     server.insert("enabled".into(), toml::Value::Boolean(true));
     mcp_servers.insert("waku_js_repl".into(), toml::Value::Table(server));
+    crate::web3::merge_grok_mcp(mcp_servers);
     toml::to_string(&root).context("could not encode Grok Computer Use configuration")
 }
 

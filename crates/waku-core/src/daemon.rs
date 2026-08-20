@@ -24,12 +24,18 @@ use crate::model::{
 };
 use crate::persistence::{ComposerDraftStore, PersistedState, StateStore};
 use crate::settings::DaemonSettingsStore;
+use crate::ship::ShipStores;
+use crate::web3::Web3Stores;
 use waku_protocol::provider_session::{ProviderSessionFork, ProviderSessionForkRequest};
+use waku_protocol::ship::{McpServer, McpTransport};
+use waku_protocol::web3::CreatedWallet;
 
 pub struct WakuBackend {
     sessions: Mutex<HashMap<Uuid, (Uuid, DriverHandle)>>,
     terminals: Mutex<HashMap<Uuid, (Uuid, crate::terminal::DaemonTerminal)>>,
     settings: DaemonSettingsStore,
+    web3: Web3Stores,
+    ship: ShipStores,
     task_store: StateStore,
     task_state: Mutex<PersistedState>,
     removed_session_ids: Mutex<HashSet<Uuid>>,
@@ -60,10 +66,14 @@ impl WakuBackend {
             .parent()
             .unwrap_or_else(|| std::path::Path::new("."))
             .to_owned();
+        let web3 = Web3Stores::new(&usage_rates_dir);
+        let ship = ShipStores::new(&usage_rates_dir);
         Ok(Self {
             sessions: Mutex::new(HashMap::new()),
             terminals: Mutex::new(HashMap::new()),
             settings,
+            web3,
+            ship,
             task_store,
             task_state: Mutex::new(task_state),
             removed_session_ids: Mutex::new(HashSet::new()),
@@ -140,6 +150,12 @@ impl WakuBackend {
         }
         Ok(checkpoint)
     }
+
+    fn mcp_rows(&self) -> anyhow::Result<Vec<waku_protocol::ship::McpServer>> {
+        let mut servers = self.ship.mcp.load()?;
+        self.ship.oauth.annotate(&mut servers);
+        Ok(with_web3_mcp_rows(servers, &self.web3))
+    }
 }
 
 /// Storage-layout migrations belong to the daemon because both the database
@@ -175,6 +191,41 @@ fn migrate_projectless_state(
     Ok(())
 }
 
+fn with_web3_mcp_rows(mut servers: Vec<McpServer>, web3: &Web3Stores) -> Vec<McpServer> {
+    if let Some(bin) = crate::web3::detect_attachment().pf_mcp {
+        servers.push(McpServer {
+            id: "waku-pf-mcp".into(),
+            name: "ProofForge".into(),
+            transport: McpTransport::Stdio,
+            url: None,
+            command: Some(bin.display().to_string()),
+            args: Vec::new(),
+            enabled: true,
+            builtin: true,
+            source: Some("web3-pf".into()),
+            auth: "none".into(),
+            auth_account: None,
+        });
+    }
+    let status = web3.okx.status();
+    if status.configured && status.enabled {
+        servers.push(McpServer {
+            id: crate::web3::ONCHAINOS_MCP_NAME.into(),
+            name: "OKX OnchainOS".into(),
+            transport: McpTransport::Http,
+            url: Some(crate::web3::ONCHAINOS_MCP_URL.into()),
+            command: None,
+            args: Vec::new(),
+            enabled: true,
+            builtin: true,
+            source: Some("web3-okx".into()),
+            auth: "authorized".into(),
+            auth_account: None,
+        });
+    }
+    servers
+}
+
 impl Backend for WakuBackend {
     fn handle(&self, request: Request, events: EventSink) -> anyhow::Result<ResponsePayload> {
         let session_id = request.session_id;
@@ -196,6 +247,188 @@ impl Backend for WakuBackend {
             Command::GetSettings => Ok(ResponsePayload::Settings {
                 settings: self.settings.get(),
             }),
+            Command::Web3Networks => Ok(ResponsePayload::Web3Networks {
+                networks: self.web3.networks.load()?,
+            }),
+            Command::Web3UpsertNetwork { network } => Ok(ResponsePayload::Web3Networks {
+                networks: self.web3.networks.upsert(network)?,
+            }),
+            Command::Web3RemoveNetwork { id } => Ok(ResponsePayload::Web3Networks {
+                networks: self.web3.networks.remove(&id)?,
+            }),
+            Command::Web3Wallets => Ok(ResponsePayload::Web3Wallets {
+                wallets: self.web3.wallets.load()?,
+            }),
+            Command::Web3UpsertWallet { wallet } => Ok(ResponsePayload::Web3Wallets {
+                wallets: self.web3.wallets.upsert(wallet)?,
+            }),
+            Command::Web3CreateWallet { label } => {
+                let (wallets, wallet, backup_hex) = self.web3.wallets.create_local(&label)?;
+                Ok(ResponsePayload::Web3WalletCreated {
+                    created: CreatedWallet {
+                        wallets,
+                        wallet,
+                        backup_hex,
+                    },
+                })
+            }
+            Command::Web3ImportWallet { label, secret } => {
+                let (wallets, _) = self.web3.wallets.import_local(&label, &secret)?;
+                Ok(ResponsePayload::Web3Wallets { wallets })
+            }
+            Command::Web3RemoveWallet { id } => Ok(ResponsePayload::Web3Wallets {
+                wallets: self.web3.wallets.remove(&id)?,
+            }),
+            Command::Web3OkxStatus => Ok(ResponsePayload::Web3OkxStatus {
+                status: self.web3.okx.status(),
+            }),
+            Command::Web3SetOkx { api_key, enabled } => {
+                if let Some(api_key) = api_key {
+                    self.web3.okx.put(&api_key)?;
+                }
+                if let Some(enabled) = enabled {
+                    self.web3.okx.set_enabled(enabled)?;
+                }
+                Ok(ResponsePayload::Web3OkxStatus {
+                    status: self.web3.okx.status(),
+                })
+            }
+            Command::Web3DeployScan { cwd } => Ok(ResponsePayload::Web3DeployScan {
+                artifacts: crate::web3::scan_artifacts(&cwd),
+            }),
+            Command::Web3DeploySend {
+                bin_path,
+                module,
+                network_id,
+                wallet_id,
+                ctor_sig,
+                ctor_args,
+                digest,
+                cwd,
+            } => {
+                let networks = self.web3.networks.load()?;
+                let network = networks
+                    .into_iter()
+                    .find(|network| network.id == network_id)
+                    .ok_or_else(|| anyhow!("unknown network {network_id}"))?;
+                let wallets = self.web3.wallets.load()?;
+                let wallet = wallets
+                    .into_iter()
+                    .find(|wallet| wallet.id == wallet_id)
+                    .ok_or_else(|| anyhow!("unknown wallet {wallet_id}"))?;
+                let record = crate::web3::deploy(
+                    &bin_path,
+                    &module,
+                    &ctor_sig,
+                    &ctor_args,
+                    digest,
+                    cwd.map(|path| path.to_string_lossy().into_owned()),
+                    &network,
+                    &wallet,
+                    self.web3.wallets.secrets(),
+                    &self.web3.deployments,
+                )?;
+                Ok(ResponsePayload::Web3DeploySend { record })
+            }
+            Command::Web3Deployments => Ok(ResponsePayload::Web3Deployments {
+                deployments: self.web3.deployments.load()?,
+            }),
+            Command::PfStatus => Ok(ResponsePayload::PfStatus {
+                status: crate::web3::pf_status(),
+            }),
+            Command::PfInstall => Ok(ResponsePayload::PfStatus {
+                status: crate::web3::pf_install(),
+            }),
+            Command::PfUninstall => Ok(ResponsePayload::PfStatus {
+                status: crate::web3::pf_uninstall()?,
+            }),
+            Command::McpList => Ok(ResponsePayload::McpList {
+                servers: self.mcp_rows()?,
+            }),
+            Command::McpUpsert { server } => {
+                self.ship.mcp.upsert(server)?;
+                Ok(ResponsePayload::McpList {
+                    servers: self.mcp_rows()?,
+                })
+            }
+            Command::McpRemove { id } => {
+                self.ship.mcp.remove(&id)?;
+                Ok(ResponsePayload::McpList {
+                    servers: self.mcp_rows()?,
+                })
+            }
+            Command::McpSetEnabled { id, enabled } => {
+                self.ship.mcp.set_enabled(&id, enabled)?;
+                Ok(ResponsePayload::McpList {
+                    servers: self.mcp_rows()?,
+                })
+            }
+            Command::McpAuthorize { id, token } => {
+                if let Some(token) = token.filter(|token| !token.trim().is_empty()) {
+                    self.ship.oauth.store_access_token(&id, token.trim())?;
+                    self.ship.mcp.set_enabled(&id, true)?;
+                    return Ok(ResponsePayload::McpAuthorize {
+                        url: None,
+                        servers: self.mcp_rows()?,
+                    });
+                }
+                let servers = self.ship.mcp.load()?;
+                let server = servers
+                    .into_iter()
+                    .find(|server| server.id == id)
+                    .ok_or_else(|| anyhow!("mcp server not found"))?;
+                let url = self.ship.oauth.start_authorize(&server)?;
+                let rows = self.mcp_rows()?;
+                if url.is_some()
+                    || rows
+                        .iter()
+                        .any(|row| row.id == id && row.auth == "authorized")
+                {
+                    self.ship.mcp.set_enabled(&id, true)?;
+                }
+                Ok(ResponsePayload::McpAuthorize {
+                    url,
+                    servers: self.mcp_rows()?,
+                })
+            }
+            Command::McpDisconnect { id } => {
+                self.ship.oauth.disconnect(&id)?;
+                Ok(ResponsePayload::McpList {
+                    servers: self.mcp_rows()?,
+                })
+            }
+            Command::PreviewScan { cwd } => Ok(ResponsePayload::PreviewScan {
+                detect: crate::ship::scan_frontend(&cwd),
+            }),
+            Command::PreviewStart { cwd } => Ok(ResponsePayload::PreviewStatus {
+                status: crate::ship::start_preview(&cwd)?,
+            }),
+            Command::PreviewStop { cwd } => Ok(ResponsePayload::PreviewStatus {
+                status: crate::ship::stop_preview(&cwd),
+            }),
+            Command::PreviewStatus { cwd } => Ok(ResponsePayload::PreviewStatus {
+                status: crate::ship::preview_status(&cwd),
+            }),
+            Command::HostingTokens => Ok(ResponsePayload::HostingTokens {
+                tokens: self.ship.hosting.tokens(),
+            }),
+            Command::HostingSetToken {
+                provider,
+                api_token,
+                enabled,
+            } => Ok(ResponsePayload::HostingTokens {
+                tokens: self.ship.hosting.set_token(provider, api_token, enabled)?,
+            }),
+            Command::HostingDeploy { cwd, provider } => Ok(ResponsePayload::HostingDeploy {
+                record: self.ship.hosting.deploy(&cwd, provider)?,
+            }),
+            Command::ShipHistory { cwd } => {
+                let contracts = self.web3.deployments.load()?;
+                let networks = self.web3.networks.load().unwrap_or_default();
+                Ok(ResponsePayload::ShipHistory {
+                    items: self.ship.history(cwd.as_deref(), &contracts, &networks),
+                })
+            }
             Command::UpdateSettings { settings } => {
                 self.settings.replace(settings)?;
                 Ok(ResponsePayload::Ack)
@@ -1452,8 +1685,20 @@ fn handle_driver_command(
     command: Command,
 ) -> anyhow::Result<ResponsePayload> {
     match command {
-        Command::Prompt { prompt } => driver.prompt(prompt),
-        Command::Steer { prompt } => driver.steer(prompt),
+        Command::Prompt { prompt } => {
+            let prompt = crate::web3::enrich_prompt(prompt);
+            driver.prompt(crate::ship::enrich_prompt(
+                prompt,
+                &crate::ship::enabled_catalog(),
+            ))
+        }
+        Command::Steer { prompt } => {
+            let prompt = crate::web3::enrich_prompt(prompt);
+            driver.steer(crate::ship::enrich_prompt(
+                prompt,
+                &crate::ship::enabled_catalog(),
+            ))
+        }
         Command::Cancel => driver.cancel(),
         Command::CancelComputerUse => driver.cancel_computer_use(),
         Command::RefreshBackgroundWork => driver.refresh_background_work(),
@@ -1544,7 +1789,37 @@ fn handle_driver_command(
         | Command::WriteTerminal { .. }
         | Command::ResizeTerminal { .. }
         | Command::CloseTerminal
-        | Command::CloseSession => {
+        | Command::CloseSession
+        | Command::Web3Networks
+        | Command::Web3UpsertNetwork { .. }
+        | Command::Web3RemoveNetwork { .. }
+        | Command::Web3Wallets
+        | Command::Web3UpsertWallet { .. }
+        | Command::Web3CreateWallet { .. }
+        | Command::Web3ImportWallet { .. }
+        | Command::Web3RemoveWallet { .. }
+        | Command::Web3OkxStatus
+        | Command::Web3SetOkx { .. }
+        | Command::Web3DeployScan { .. }
+        | Command::Web3DeploySend { .. }
+        | Command::Web3Deployments
+        | Command::PfStatus
+        | Command::PfInstall
+        | Command::PfUninstall
+        | Command::McpList
+        | Command::McpUpsert { .. }
+        | Command::McpRemove { .. }
+        | Command::McpSetEnabled { .. }
+        | Command::McpAuthorize { .. }
+        | Command::McpDisconnect { .. }
+        | Command::PreviewScan { .. }
+        | Command::PreviewStart { .. }
+        | Command::PreviewStop { .. }
+        | Command::PreviewStatus { .. }
+        | Command::HostingTokens
+        | Command::HostingSetToken { .. }
+        | Command::HostingDeploy { .. }
+        | Command::ShipHistory { .. } => {
             bail!("daemon received a command in the wrong dispatch path")
         }
     }

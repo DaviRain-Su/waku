@@ -204,6 +204,7 @@ impl Waku {
             // finished while another session was selected could otherwise
             // retain the clean snapshot captured before its agent made edits.
             self.refresh_selected_branch_snapshot(cx);
+            self.refresh_preview_detect(cx);
         }
         self.refresh_composer_sources(cx);
         self.reset_transcript_rows(self.transcript_row_count());
@@ -295,6 +296,9 @@ impl Waku {
         let project_path = self
             .workspace_path_for_session(&self.state.sessions[index])
             .map(std::path::Path::to_path_buf);
+        if let Some(cwd) = project_path.clone() {
+            self.stop_preview_for_cwd(cwd, cx);
+        }
         let was_selected = self.state.selected_session == Some(session_id);
         self.submission_preparations.remove(&session_id);
         self.reset_session_runtime(session_id);

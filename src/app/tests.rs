@@ -1766,8 +1766,12 @@ fn settings_search_filters_pages_for_arrow_cycling() {
         SettingsPage::Appearance,
         SettingsPage::Providers,
         SettingsPage::Skills,
+        SettingsPage::Mcp,
         SettingsPage::Usage,
         SettingsPage::Daemon,
+        SettingsPage::Networks,
+        SettingsPage::Wallets,
+        SettingsPage::ProofForge,
     ];
     if cfg!(all(debug_assertions, target_os = "macos")) {
         all_pages.push(SettingsPage::ComputerUse);
@@ -1776,6 +1780,8 @@ fn settings_search_filters_pages_for_arrow_cycling() {
 
     assert_eq!(pages("theme"), vec![SettingsPage::Appearance]);
     assert_eq!(pages("skill"), vec![SettingsPage::Skills]);
+    assert_eq!(pages("mcp"), vec![SettingsPage::Mcp]);
+    assert_eq!(pages("proofforge"), vec![SettingsPage::ProofForge]);
 
     // A keyword shared across pages keeps them all reachable.
     let mut codex_pages = vec![
@@ -1938,4 +1944,18 @@ fn tab_cycle_walks_favorites_then_usable_providers_in_rail_order() {
             ModelPickerTab::Provider(ProviderKind::Claude),
         ]
     );
+}
+
+#[test]
+fn ship_contract_empty_state_points_at_install_or_gate() {
+    assert!(super::deploy_dialog::contract_needs_pf_install(Some("missing")));
+    assert!(super::deploy_dialog::contract_needs_pf_install(Some("installing")));
+    assert!(!super::deploy_dialog::contract_needs_pf_install(Some("ready")));
+    assert!(!super::deploy_dialog::contract_needs_pf_install(None));
+}
+
+#[test]
+fn ship_faucet_is_xlayer_testnet_only() {
+    assert!(waku_client::web3::faucet_url("xlayer-testnet").is_some());
+    assert!(waku_client::web3::faucet_url("anvil").is_none());
 }

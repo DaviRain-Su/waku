@@ -115,16 +115,21 @@ impl OpenCodeDriver {
             .transpose()?;
         // The one-shot path handed Computer Use to OpenCode through the
         // environment; the resident server takes it exactly the same way.
-        let environment = computer_use
+        let mut environment = computer_use
             .as_ref()
             .map(|runtime| super::support::opencode_computer_use_environment(&runtime.config))
             .unwrap_or_default();
-        // Computer Use bakes per-session configuration into the server's
-        // environment, so it keeps a dedicated server. Every other session
-        // shares the workspace's one resident server — OpenCode hosts many
-        // sessions per process, and a second `opencode serve` in the same
-        // workspace contends with the live one.
-        let server = if computer_use.is_some() {
+        if computer_use.is_none() {
+            environment.extend(crate::ship::opencode_catalog_environment(
+                &crate::ship::enabled_catalog(),
+            ));
+        }
+        // Computer Use and a nonempty user MCP catalog both bake configuration
+        // into the server's environment, so those sessions keep a dedicated
+        // server. Every other session shares the workspace's one resident
+        // server — OpenCode hosts many sessions per process, and a second
+        // `opencode serve` in the same workspace contends with the live one.
+        let server = if computer_use.is_some() || !environment.is_empty() {
             PooledServer::dedicated(OpenCodeServer::start_with_env(&binary, &cwd, &environment)?)
         } else {
             crate::opencode_pool::acquire(&binary, &cwd)?

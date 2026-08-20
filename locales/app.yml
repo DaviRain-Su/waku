@@ -128,12 +128,56 @@ settings.skills:
   en: Skills
 settings.skills_keywords:
   en: skills skill library agent disable enable delete claude codex cursor opencode pi amp shared
+settings.mcp:
+  en: MCP
+settings.mcp_keywords:
+  en: mcp servers github cloudflare vercel http stdio oauth catalog preview hosting token
 settings.usage_keywords:
   en: usage tokens cost spend cache daily chart model breakdown history claude codex
 settings.daemon_keywords:
   en: daemon server remote web network expose origin token port websocket
 settings.computer_use_keywords:
   en: computer use screen recording accessibility apps control codex
+settings.networks:
+  en: Networks
+settings.wallets:
+  en: Wallets
+settings.networks_keywords:
+  en: networks evm rpc chain explorer xlayer sepolia base okx onchainos web3 deploy
+settings.wallets_keywords:
+  en: wallets keys local import watch devenvkey hex backup signer web3
+settings.proofforge:
+  en: ProofForge
+settings.proofforge_keywords:
+  en: proofforge proof forge compiler lean gate toolchain install evm solc
+pf.loading:
+  en: Checking ProofForge…
+pf.description_title:
+  en: Compiler
+pf.description:
+  en: ProofForge is the machine gate for ProgramV1 contracts — compiler plus check/build, not formal verification. Install it here so new runs can draft, gate, and produce a .bin Waku can deploy.
+pf.state_missing:
+  en: Not installed
+pf.state_installing:
+  en: Installing
+pf.state_ready:
+  en: Ready
+pf.source_host:
+  en: This computer
+pf.source_managed:
+  en: Installed by Waku
+pf.evm_ready:
+  en: EVM tools ready
+pf.evm_missing:
+  en: Compiler ready, EVM tools not installed
+pf.install:
+  en: Install ProofForge
+pf.installing:
+  en: Installing…
+pf.uninstall:
+  en: Remove
+pf.ready_toast:
+  en: ProofForge is ready
 settings.back:
   en: Back
 settings.search:
@@ -505,6 +549,192 @@ common.copy_code:
   en: Copy Code
 common.cancel:
   en: Cancel
+web3.loading:
+  en: Loading networks and wallets…
+web3.okx_title:
+  en: OKX OnchainOS
+web3.okx_description:
+  en: Optional API key for the OnchainOS MCP. The key stays on this computer and is never returned over RPC.
+web3.okx_key_placeholder:
+  en: OnchainOS API key
+web3.save_key:
+  en: Save key
+web3.okx_not_configured:
+  en: No key saved
+web3.add_network:
+  en: Add network
+web3.edit_network:
+  en: Edit network
+web3.builtin:
+  en: Built-in
+web3.edit:
+  en: Edit
+web3.remove:
+  en: Remove
+web3.save:
+  en: Save
+web3.invalid_chain_id:
+  en: Chain ID must be a number
+web3.create_wallet:
+  en: Create local
+web3.import_wallet:
+  en: Import hex
+web3.watch_wallet:
+  en: Watch-only
+web3.env_wallet:
+  en: Dev env key
+web3.add_wallet:
+  en: Add wallet
+web3.backup_key:
+  en: Backup this key now
+web3.backup_key_description:
+  en: This hex key is shown once. Waku will not display it again. Fund the address on X Layer testnet before deploying.
+web3.source_local:
+  en: Local
+web3.source_watch:
+  en: Watch-only
+web3.source_env:
+  en: Dev env key
+web3.source_walletconnect:
+  en: WalletConnect (legacy)
+web3.deploy:
+  en: Deploy
+web3.deploy_title:
+  en: Deploy
+web3.deploy_description:
+  en: Scan this session’s working tree for a gate-passing .bin, then sign a create transaction.
+web3.deploy_no_workspace:
+  en: Select a session with a project folder before deploying
+web3.deploy_no_artifact:
+  en: No sealed artifacts under this session. Ask the agent to run the ProofForge gate (pf_check → pf_build), then rescan.
+web3.deploy_install_pf:
+  en: ProofForge is not installed. Open Settings → ProofForge to install it.
+web3.rescan:
+  en: Rescan
+web3.faucet:
+  en: Get testnet OKB from the X Layer faucet
+web3.open_explorer:
+  en: Open in explorer
+web3.deploy_no_network:
+  en: Enable a network in Settings → Networks
+web3.deploy_no_wallet:
+  en: Create or import a signing wallet in Settings → Wallets
+web3.artifact:
+  en: Artifact
+web3.network:
+  en: Network
+web3.wallet:
+  en: Wallet
+web3.ctor_sig_placeholder:
+  en: Constructor signature (optional)
+web3.ctor_args_placeholder:
+  en: Constructor args, comma-separated
+web3.deploying:
+  en: Deploying…
+web3.deploy_history:
+  en: Recent deployments
+mcp.loading:
+  en: Loading MCP servers…
+mcp.description_title:
+  en: Catalog
+mcp.description:
+  en: Enable a server to attach it to every new run. Click Authorize to sign in in your default browser. GitHub uses your GitHub CLI login when available. There is no token field on a row.
+mcp.builtin:
+  en: Built-in
+mcp.custom:
+  en: Custom
+mcp.source_okx:
+  en: Attached by Web3
+mcp.source_pf:
+  en: Attached by Web3
+mcp.authorize:
+  en: Authorize
+mcp.disconnect:
+  en: Disconnect
+mcp.auth_needed:
+  en: Sign in required
+mcp.auth_authorized:
+  en: Connected
+mcp.auth_public:
+  en: No login needed
+mcp.auth_none:
+  en: Local
+mcp.public_no_login:
+  en: This server does not need an account
+mcp.signed_in:
+  en: Connected
+mcp.github_token_title:
+  en: GitHub token
+mcp.github_token_hint:
+  en: GitHub does not let unknown apps register. If GitHub CLI is not logged in, create a token in the browser and paste it here.
+mcp.github_token_placeholder:
+  en: ghp_… or github_pat_…
+mcp.github_token_save:
+  en: Save token
+mcp.github_token_required:
+  en: Paste the GitHub token from the browser
+mcp.add:
+  en: Add
+mcp.add_http:
+  en: Add HTTP
+mcp.add_stdio:
+  en: Add stdio
+mcp.add_http_hint:
+  en: Paste an MCP URL. Authorize opens your default browser if the server needs a login.
+mcp.add_stdio_hint:
+  en: Run a local MCP command. Arguments are space-separated.
+mcp.remove:
+  en: Remove
+mcp.name_placeholder:
+  en: Name
+mcp.url_placeholder:
+  en: https://…
+mcp.command_placeholder:
+  en: Command
+mcp.args_placeholder:
+  en: Arguments (optional)
+mcp.cloudflare_token:
+  en: Cloudflare deploy token
+mcp.cloudflare_token_description:
+  en: Optional wrangler token for one-click Pages or Workers deploys. Not used as an MCP header.
+mcp.cloudflare_token_placeholder:
+  en: Cloudflare API token
+mcp.vercel_token:
+  en: Vercel deploy token
+mcp.vercel_token_description:
+  en: Optional Vercel token for one-click deploys. Not used as an MCP header.
+mcp.vercel_token_placeholder:
+  en: Vercel token
+mcp.save_token:
+  en: Save token
+mcp.token_not_configured:
+  en: No token saved
+preview.button:
+  en: Preview
+preview.scanning:
+  en: Looking for a local frontend…
+preview.none:
+  en: No frontend found
+preview.no_workspace:
+  en: Select a session with a project folder before previewing
+ship.title:
+  en: Ship
+ship.description:
+  en: Preview or host the frontend, and deploy a gate-passing contract. Either side can ship alone.
+ship.frontend:
+  en: Frontend
+ship.contract:
+  en: Contract
+ship.cloudflare:
+  en: Host on Cloudflare
+ship.vercel:
+  en: Host on Vercel
+ship.hosting:
+  en: Hosting…
+ship.hosting_token_hint:
+  en: Save a Cloudflare or Vercel token in Settings → MCP for one-click host. Or enable those MCP servers and let the agent deploy.
+ship.history:
+  en: Recent ships
 common.send:
   en: Send
 

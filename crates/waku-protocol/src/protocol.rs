@@ -14,9 +14,17 @@ use crate::settings::DaemonSettings;
 use crate::skills::SkillsCatalog;
 use crate::usage::PlanUsage;
 use crate::usage_history::{UsageHistory, UsageWindow};
+use crate::ship::{
+    FrontendDetect, HostingProvider, HostingRecord, HostingTokenStatus, McpServer, PreviewStatus,
+    ShipHistoryItem,
+};
+use crate::web3::{
+    CreatedWallet, DeployArtifact, DeploymentRecord, EvmNetwork, OkxStatus, PfToolchainStatus,
+    WalletAccount,
+};
 use crate::workspace::{WorkspaceOperation, WorkspaceResult};
 
-pub const PROTOCOL_VERSION: u32 = 3;
+pub const PROTOCOL_VERSION: u32 = 8;
 pub const MAX_WIRE_MESSAGE_BYTES: usize = 48 * 1024 * 1024;
 pub const DAEMON_TOKEN_ENV: &str = "WAKU_DAEMON_TOKEN";
 pub const DAEMON_ADDRESS_ENV: &str = "WAKU_DAEMON_ADDRESS";
@@ -236,6 +244,105 @@ pub enum Command {
     },
     CloseTerminal,
     CloseSession,
+    Web3Networks,
+    Web3UpsertNetwork {
+        network: EvmNetwork,
+    },
+    Web3RemoveNetwork {
+        id: String,
+    },
+    Web3Wallets,
+    Web3UpsertWallet {
+        wallet: WalletAccount,
+    },
+    Web3CreateWallet {
+        label: String,
+    },
+    Web3ImportWallet {
+        label: String,
+        secret: String,
+    },
+    Web3RemoveWallet {
+        id: String,
+    },
+    Web3OkxStatus,
+    Web3SetOkx {
+        api_key: Option<String>,
+        enabled: Option<bool>,
+    },
+    Web3DeployScan {
+        #[ts(type = "string")]
+        cwd: PathBuf,
+    },
+    Web3DeploySend {
+        bin_path: String,
+        module: String,
+        network_id: String,
+        wallet_id: String,
+        #[serde(default)]
+        ctor_sig: String,
+        #[serde(default)]
+        ctor_args: Vec<String>,
+        digest: Option<String>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        #[ts(type = "string | null")]
+        cwd: Option<PathBuf>,
+    },
+    Web3Deployments,
+    PfStatus,
+    PfInstall,
+    PfUninstall,
+    McpList,
+    McpUpsert {
+        server: McpServer,
+    },
+    McpRemove {
+        id: String,
+    },
+    McpSetEnabled {
+        id: String,
+        enabled: bool,
+    },
+    McpAuthorize {
+        id: String,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        token: Option<String>,
+    },
+    McpDisconnect {
+        id: String,
+    },
+    PreviewScan {
+        #[ts(type = "string")]
+        cwd: PathBuf,
+    },
+    PreviewStart {
+        #[ts(type = "string")]
+        cwd: PathBuf,
+    },
+    PreviewStop {
+        #[ts(type = "string")]
+        cwd: PathBuf,
+    },
+    PreviewStatus {
+        #[ts(type = "string")]
+        cwd: PathBuf,
+    },
+    HostingTokens,
+    HostingSetToken {
+        provider: HostingProvider,
+        api_token: Option<String>,
+        enabled: Option<bool>,
+    },
+    HostingDeploy {
+        #[ts(type = "string")]
+        cwd: PathBuf,
+        provider: HostingProvider,
+    },
+    ShipHistory {
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        #[ts(type = "string | null")]
+        cwd: Option<PathBuf>,
+    },
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, TS)]
@@ -426,6 +533,52 @@ pub enum ResponsePayload {
     Workspace {
         result: WorkspaceResult,
     },
+    Web3Networks {
+        networks: Vec<EvmNetwork>,
+    },
+    Web3Wallets {
+        wallets: Vec<WalletAccount>,
+    },
+    Web3WalletCreated {
+        created: CreatedWallet,
+    },
+    Web3OkxStatus {
+        status: OkxStatus,
+    },
+    Web3DeployScan {
+        artifacts: Vec<DeployArtifact>,
+    },
+    Web3DeploySend {
+        record: DeploymentRecord,
+    },
+    Web3Deployments {
+        deployments: Vec<DeploymentRecord>,
+    },
+    PfStatus {
+        status: PfToolchainStatus,
+    },
+    McpList {
+        servers: Vec<McpServer>,
+    },
+    McpAuthorize {
+        url: Option<String>,
+        servers: Vec<McpServer>,
+    },
+    PreviewScan {
+        detect: FrontendDetect,
+    },
+    PreviewStatus {
+        status: PreviewStatus,
+    },
+    HostingTokens {
+        tokens: Vec<HostingTokenStatus>,
+    },
+    HostingDeploy {
+        record: HostingRecord,
+    },
+    ShipHistory {
+        items: Vec<ShipHistoryItem>,
+    },
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, TS)]
@@ -499,7 +652,7 @@ mod tests {
 
         assert_eq!(json["type"], "forkSessionFromResponse");
         assert_eq!(json["turnCount"], 7);
-        assert_eq!(PROTOCOL_VERSION, 3);
+        assert_eq!(PROTOCOL_VERSION, 8);
     }
 
     #[test]
@@ -508,7 +661,7 @@ mod tests {
 
         assert_eq!(json["type"], "rewindSessionToMessage");
         assert_eq!(json["turnCount"], 4);
-        assert_eq!(PROTOCOL_VERSION, 3);
+        assert_eq!(PROTOCOL_VERSION, 8);
     }
 
     #[test]

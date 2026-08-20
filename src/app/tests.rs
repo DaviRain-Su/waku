@@ -2058,3 +2058,11 @@ fn ship_faucet_is_xlayer_testnet_only() {
     assert!(waku_client::web3::faucet_url("xlayer-testnet").is_some());
     assert!(waku_client::web3::faucet_url("anvil").is_none());
 }
+
+#[test]
+fn format_wei_shows_dust_instead_of_zero() {
+    assert_eq!(waku_client::web3::format_wei("0"), "0");
+    assert_eq!(waku_client::web3::format_wei("1000000000000000000"), "1");
+    assert_eq!(waku_client::web3::format_wei("1500000000000000000"), "1.5");
+    assert_eq!(waku_client::web3::format_wei("1"), "0.000000");
+}

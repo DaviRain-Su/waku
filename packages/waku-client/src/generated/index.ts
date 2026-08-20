@@ -100,6 +100,8 @@ export type { UsageProvider } from "./UsageProvider";
 export type { UsageWindow } from "./UsageWindow";
 export type { UserInputAnswer } from "./UserInputAnswer";
 export type { WalletAccount } from "./WalletAccount";
+export type { WalletBalance } from "./WalletBalance";
+export type { WalletBalanceSnapshot } from "./WalletBalanceSnapshot";
 export type { WalletSource } from "./WalletSource";
 export type { WireComputerToolRequest } from "./WireComputerToolRequest";
 export type { WireDriverEvent } from "./WireDriverEvent";

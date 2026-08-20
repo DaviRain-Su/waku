@@ -320,23 +320,11 @@ fn serve_static(
                     continue;
                 }
                 match std::fs::read(&file) {
-                    Ok(bytes) => {
-                        let header = format!(
-                            "HTTP/1.1 200 OK\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
-                            bytes.len()
-                        );
-                        let _ = stream.write_all(header.as_bytes());
-                        let _ = stream.write_all(&bytes);
-                    }
+                    Ok(bytes) => write_static(&mut stream, &file, &bytes),
                     Err(_) => {
                         let fallback = root.join("index.html");
-                        if let Ok(bytes) = std::fs::read(fallback) {
-                            let header = format!(
-                                "HTTP/1.1 200 OK\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
-                                bytes.len()
-                            );
-                            let _ = stream.write_all(header.as_bytes());
-                            let _ = stream.write_all(&bytes);
+                        if let Ok(bytes) = std::fs::read(&fallback) {
+                            write_static(&mut stream, &fallback, &bytes);
                         } else {
                             let _ = stream.write_all(b"HTTP/1.1 404 Not Found\r\n\r\n");
                         }
@@ -390,6 +378,41 @@ fn npx_available() -> bool {
 
 fn npx_bin() -> &'static str {
     if cfg!(windows) { "npx.cmd" } else { "npx" }
+}
+
+fn write_static(stream: &mut std::net::TcpStream, path: &Path, bytes: &[u8]) {
+    let header = format!(
+        "HTTP/1.1 200 OK\r\nContent-Type: {}\r\nContent-Length: {}\r\nCache-Control: no-store\r\nConnection: close\r\n\r\n",
+        mime_for(path),
+        bytes.len()
+    );
+    let _ = stream.write_all(header.as_bytes());
+    let _ = stream.write_all(bytes);
+}
+
+fn mime_for(path: &Path) -> &'static str {
+    match path
+        .extension()
+        .and_then(|ext| ext.to_str())
+        .map(|ext| ext.to_ascii_lowercase())
+        .as_deref()
+    {
+        Some("html") | Some("htm") => "text/html; charset=utf-8",
+        Some("js") | Some("mjs") => "text/javascript; charset=utf-8",
+        Some("css") => "text/css; charset=utf-8",
+        Some("json") => "application/json; charset=utf-8",
+        Some("svg") => "image/svg+xml",
+        Some("png") => "image/png",
+        Some("jpg") | Some("jpeg") => "image/jpeg",
+        Some("gif") => "image/gif",
+        Some("webp") => "image/webp",
+        Some("woff2") => "font/woff2",
+        Some("woff") => "font/woff",
+        Some("map") => "application/json",
+        Some("wasm") => "application/wasm",
+        Some("txt") => "text/plain; charset=utf-8",
+        _ => "application/octet-stream",
+    }
 }
 
 fn first_existing(paths: &[PathBuf]) -> Option<PathBuf> {
@@ -473,5 +496,17 @@ mod tests {
     fn none_without_frontend() {
         let dir = tempfile::tempdir().unwrap();
         assert_eq!(detect_frontend(dir.path()).kind, "none");
+    }
+
+    #[test]
+    fn js_is_served_as_javascript() {
+        assert_eq!(
+            mime_for(Path::new("vendor/ethers.umd.min.js")),
+            "text/javascript; charset=utf-8"
+        );
+        assert_eq!(
+            mime_for(Path::new("index.html")),
+            "text/html; charset=utf-8"
+        );
     }
 }

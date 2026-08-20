@@ -2199,6 +2199,13 @@ impl Waku {
         // Tab titles and toolbar state live on the browser entity; the panel
         // chrome re-renders when they move.
         cx.observe(&browser, |_, _, cx| cx.notify()).detach();
+        cx.subscribe(
+            &browser,
+            |this, browser, event: &crate::browser::BrowserEthEvent, cx| {
+                this.handle_preview_eth(browser, event, cx);
+            },
+        )
+        .detach();
         self.right_panel_browsers
             .insert(browser_id, browser.clone());
         self.apply_pending_preview_url(cx);
@@ -2229,6 +2236,8 @@ impl Waku {
         self.menus.borrow().values().any(ContextMenuHandle::is_open)
             || self.command_palette.is_open()
             || self.commit_dialog.is_some()
+            || self.deploy_dialog.is_some()
+            || self.sign_dialog.is_some()
             || self.image_preview.is_some()
             || self.composer.read(cx).context_menu_open()
             || self
@@ -2253,9 +2262,14 @@ impl Waku {
         // A webview composites above the GPUI scene, so the panel's clip does
         // not apply to it: shown mid-slide it would hang over the transcript
         // at full width. Keep it down until the panel has finished moving.
+        // Sign/deploy dialogs must also hide it immediately: even with the
+        // scene overlay, WKWebView still receives clicks, so a modal painted
+        // "above" the page cannot be pressed.
+        let hide_for_modal = self.sign_dialog.is_some() || self.deploy_dialog.is_some();
         let active_browser = if self.settings_page.is_none()
             && self.right_panel_visible
             && self.right_panel_slide.is_none()
+            && !hide_for_modal
         {
             self.active_right_panel_surface()
                 .and_then(RightPanelSurface::browser_id)

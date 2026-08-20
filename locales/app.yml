@@ -585,6 +585,48 @@ web3.env_wallet:
   en: Dev env key
 web3.add_wallet:
   en: Add wallet
+web3.wallet_label_placeholder:
+  en: Label, e.g. X Layer deploy
+web3.create_wallet_title:
+  en: Create local wallet
+web3.create_wallet_hint:
+  en: Generates a new private key on this computer. Only the address is stored in the wallet list — copy the backup hex when it appears, it is shown once.
+web3.import_wallet_title:
+  en: Import hex key
+web3.import_wallet_hint:
+  en: Paste a 32-byte secp256k1 private key. 64 hex digits, with or without 0x. Seed phrases and JSON keystores are not accepted.
+web3.import_wallet_placeholder:
+  en: 0x followed by 64 hex digits
+web3.watch_wallet_title:
+  en: Watch-only address
+web3.watch_wallet_hint:
+  en: An address to display. It cannot sign or deploy. Use this to track a contract or a key that lives in another wallet.
+web3.watch_wallet_placeholder:
+  en: 0x followed by 40 hex digits
+web3.env_wallet_title:
+  en: Dev environment key
+web3.env_wallet_hint:
+  en: The name of an environment variable that already holds a hex private key — not the key itself. Resolved only when you deploy, and only on testnet.
+web3.env_wallet_placeholder:
+  en: e.g. DEV_PRIVATE_KEY
+web3.wallet_label_empty:
+  en: Enter a label for this wallet
+web3.import_key_empty:
+  en: Paste a hex private key
+web3.watch_address_empty:
+  en: Paste a 0x address
+web3.env_name_empty:
+  en: Enter the environment variable name, not the key
+web3.refresh_balances:
+  en: Refresh balances
+web3.balance_loading:
+  en: Checking balances…
+web3.balance_no_address:
+  en: No address yet — balances appear after create or import
+web3.balance_no_network:
+  en: Enable a network in Settings → Networks to see balances
+web3.balance_invalid:
+  en: Could not read balances
 web3.backup_key:
   en: Backup this key now
 web3.backup_key_description:
@@ -619,6 +661,34 @@ web3.deploy_no_network:
   en: Enable a network in Settings → Networks
 web3.deploy_no_wallet:
   en: Create or import a signing wallet in Settings → Wallets
+web3.preview_no_wallet:
+  en: Create or import a signing wallet in Settings → Wallets, then try again
+web3.preview_connected:
+  en: Preview is using your Waku wallet
+web3.sign_title:
+  en: Confirm transaction
+web3.sign_description:
+  en: The preview page wants this computer to sign with the wallet in Settings → Wallets.
+web3.sign_to:
+  en: To
+web3.sign_data:
+  en: Data
+web3.sign_create:
+  en: Contract creation
+web3.sign_confirm:
+  en: Sign
+web3.sign_reject:
+  en: Reject
+web3.sign_rejected:
+  en: Rejected in Waku
+web3.sign_busy:
+  en: Another transaction is waiting for confirmation
+web3.sign_sent:
+  en: Transaction sent
+web3.signing:
+  en: Signing…
+web3.sign_message_unsupported:
+  en: Message signing is not supported yet. Confirm contract calls in the Waku dialog.
 web3.artifact:
   en: Artifact
 web3.network:
@@ -717,6 +787,8 @@ preview.none:
   en: No frontend found
 preview.no_workspace:
   en: Select a session with a project folder before previewing
+preview.opened_externally:
+  en: Preview is also open in your system browser — use that tab for wallet extensions.
 ship.title:
   en: Ship
 ship.description:

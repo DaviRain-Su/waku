@@ -115,17 +115,58 @@ pub async fn send_with_key(
     data: &str,
 ) -> anyhow::Result<SendOutcome> {
     let signer = parse_signer(hex_key)?;
+    let from = signer.address();
     let wallet = EthereumWallet::from(signer);
+    let urls = rpc_fallback_urls(rpc_url);
+    let mut last_error = anyhow!("no RPC URL");
+    for url in urls {
+        match send_with_key_on_url(&wallet, from, &url, chain_id, to, data).await {
+            Ok(outcome) => return Ok(outcome),
+            Err(error) => last_error = error,
+        }
+    }
+    Err(last_error)
+}
+
+fn rpc_fallback_urls(rpc_url: &str) -> Vec<String> {
+    let mut urls = vec![rpc_url.trim().to_string()];
+    if rpc_url.contains("xlayer") {
+        for extra in [
+            "https://testrpc.xlayer.tech/terigon",
+            "https://xlayertestrpc.okx.com/terigon",
+            "https://testrpc.xlayer.tech",
+            "https://xlayertestrpc.okx.com",
+        ] {
+            if !urls.iter().any(|url| url == extra) {
+                urls.push(extra.to_string());
+            }
+        }
+    }
+    urls.retain(|url| !url.is_empty());
+    urls
+}
+
+async fn send_with_key_on_url(
+    wallet: &EthereumWallet,
+    from: Address,
+    rpc_url: &str,
+    chain_id: u64,
+    to: Option<&str>,
+    data: &str,
+) -> anyhow::Result<SendOutcome> {
     let url: reqwest::Url = rpc_url
         .parse()
-        .map_err(|error| anyhow!("invalid rpc url: {error}"))?;
-    let provider = ProviderBuilder::new().wallet(wallet).connect_http(url);
+        .map_err(|error| anyhow!("invalid rpc url {rpc_url}: {error}"))?;
+    let provider = ProviderBuilder::new()
+        .wallet(wallet.clone())
+        .connect_http(url);
 
     let input: Bytes = data
         .parse()
         .map_err(|error| anyhow!("invalid tx data: {error}"))?;
     let mut tx = TransactionRequest::default()
         .with_chain_id(chain_id)
+        .with_from(from)
         .with_input(input);
     if let Some(to) = to {
         let addr: Address = to
@@ -137,15 +178,21 @@ pub async fn send_with_key(
     let pending = provider
         .send_transaction(tx)
         .await
-        .map_err(|error| anyhow!("send transaction: {error}"))?;
+        .map_err(|error| anyhow!("send transaction via {rpc_url}: {error}"))?;
     let tx_hash = format!("{:#x}", pending.tx_hash());
-    let receipt = pending
-        .get_receipt()
-        .await
-        .map_err(|error| anyhow!("wait for receipt: {error}"))?;
+    // Receipt is best-effort. Public X Layer RPCs often drop the follow-up
+    // poll after a successful broadcast (`error sending request for url`).
+    let contract_address =
+        match tokio::time::timeout(std::time::Duration::from_secs(20), pending.get_receipt()).await
+        {
+            Ok(Ok(receipt)) => receipt
+                .contract_address
+                .map(|address| format!("{address:#x}")),
+            _ => None,
+        };
     Ok(SendOutcome {
         tx_hash,
-        contract_address: receipt.contract_address.map(|address| format!("{address:#x}")),
+        contract_address,
     })
 }
 

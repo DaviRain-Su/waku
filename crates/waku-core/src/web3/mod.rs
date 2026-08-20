@@ -1,5 +1,6 @@
 //! Device-local Web3 ship lane: networks, wallets, deploy, and MCP injection.
 
+mod balances;
 mod deploy;
 mod inject;
 mod local_wallet;
@@ -11,7 +12,11 @@ mod wallets;
 
 use std::path::{Path, PathBuf};
 
-pub use deploy::{DeployStore, deploy, encode_ctor_args, parse_output_set_digest, preflight, scan_artifacts};
+pub use balances::fetch as fetch_wallet_balances;
+pub use deploy::{
+    DeployStore, deploy, encode_ctor_args, json_rpc, parse_output_set_digest, preflight,
+    scan_artifacts, send_tx,
+};
 pub use inject::enrich_prompt;
 pub use local_wallet::WalletSecrets;
 pub use mcp::{

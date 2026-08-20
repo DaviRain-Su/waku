@@ -279,6 +279,17 @@ impl Backend for WakuBackend {
             Command::Web3RemoveWallet { id } => Ok(ResponsePayload::Web3Wallets {
                 wallets: self.web3.wallets.remove(&id)?,
             }),
+            Command::Web3WalletBalances { wallet_id } => {
+                let wallets = self.web3.wallets.load()?;
+                let networks = self.web3.networks.load()?;
+                Ok(ResponsePayload::Web3WalletBalances {
+                    wallets: crate::web3::fetch_wallet_balances(
+                        &wallets,
+                        &networks,
+                        wallet_id.as_deref(),
+                    ),
+                })
+            }
             Command::Web3OkxStatus => Ok(ResponsePayload::Web3OkxStatus {
                 status: self.web3.okx.status(),
             }),
@@ -329,6 +340,45 @@ impl Backend for WakuBackend {
                     &self.web3.deployments,
                 )?;
                 Ok(ResponsePayload::Web3DeploySend { record })
+            }
+            Command::Web3SendTx {
+                network_id,
+                wallet_id,
+                to,
+                data,
+            } => {
+                let networks = self.web3.networks.load()?;
+                let network = networks
+                    .into_iter()
+                    .find(|network| network.id == network_id)
+                    .ok_or_else(|| anyhow!("unknown network {network_id}"))?;
+                let wallets = self.web3.wallets.load()?;
+                let wallet = wallets
+                    .into_iter()
+                    .find(|wallet| wallet.id == wallet_id)
+                    .ok_or_else(|| anyhow!("unknown wallet {wallet_id}"))?;
+                let tx_hash = crate::web3::send_tx(
+                    to.as_deref(),
+                    &data,
+                    &network,
+                    &wallet,
+                    self.web3.wallets.secrets(),
+                )?;
+                Ok(ResponsePayload::Web3SendTx { tx_hash })
+            }
+            Command::Web3Rpc {
+                network_id,
+                method,
+                params,
+            } => {
+                let networks = self.web3.networks.load()?;
+                let network = networks
+                    .into_iter()
+                    .find(|network| network.id == network_id)
+                    .ok_or_else(|| anyhow!("unknown network {network_id}"))?;
+                Ok(ResponsePayload::Web3Rpc {
+                    result: crate::web3::json_rpc(&network.rpc_url, &method, params)?,
+                })
             }
             Command::Web3Deployments => Ok(ResponsePayload::Web3Deployments {
                 deployments: self.web3.deployments.load()?,
@@ -1825,10 +1875,13 @@ fn handle_driver_command(
         | Command::Web3CreateWallet { .. }
         | Command::Web3ImportWallet { .. }
         | Command::Web3RemoveWallet { .. }
+        | Command::Web3WalletBalances { .. }
         | Command::Web3OkxStatus
         | Command::Web3SetOkx { .. }
         | Command::Web3DeployScan { .. }
         | Command::Web3DeploySend { .. }
+        | Command::Web3SendTx { .. }
+        | Command::Web3Rpc { .. }
         | Command::Web3Deployments
         | Command::PfStatus
         | Command::PfInstall

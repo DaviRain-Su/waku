@@ -27,8 +27,9 @@
 use std::rc::Rc;
 
 use gpui::{
-    App, Context, Div, Entity, FocusHandle, Focusable, HitboxBehavior, IntoElement, ObjectFit,
-    Render, SharedString, Stateful, Subscription, Window, canvas, div, img, prelude::*, px,
+    App, Context, Div, Entity, EventEmitter, FocusHandle, Focusable, HitboxBehavior, IntoElement,
+    ObjectFit, Render, SharedString, Stateful, Subscription, Window, canvas, div, img, prelude::*,
+    px,
 };
 #[cfg(any(target_os = "macos", target_os = "windows"))]
 use gpui::{AsyncApp, ForegroundExecutor, WeakEntity};
@@ -44,6 +45,20 @@ use crate::{
 };
 
 const TOOLBAR_HEIGHT: f32 = 42.0;
+
+/// Injected at document start so dapps see `window.ethereum` before their
+/// own scripts run. Preview has no browser-extension wallets; this is the
+/// Settings → Wallets signer.
+#[cfg(any(target_os = "macos", target_os = "windows"))]
+const ETH_PROVIDER_JS: &str = include_str!("eth_provider.js");
+
+/// JSON-RPC from the injected provider. Handled on the Waku entity.
+#[derive(Clone, Debug)]
+pub struct BrowserEthEvent {
+    pub id: u64,
+    pub method: String,
+    pub params: serde_json::Value,
+}
 /// Mirror Safari's UA so sites serve the webview their real desktop build.
 #[cfg(target_os = "macos")]
 const USER_AGENT: &str = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) \
@@ -1189,7 +1204,48 @@ pub struct BrowserView {
     _subscriptions: Vec<Subscription>,
 }
 
+impl EventEmitter<BrowserEthEvent> for BrowserView {}
+
 impl BrowserView {
+    fn eth_ipc_received(&mut self, body: &str, cx: &mut Context<Self>) {
+        let Ok(value) = serde_json::from_str::<serde_json::Value>(body) else {
+            return;
+        };
+        let id = value.get("id").and_then(|v| v.as_u64()).unwrap_or(0);
+        let method = value
+            .get("method")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string();
+        if method.is_empty() {
+            return;
+        }
+        let params = value
+            .get("params")
+            .cloned()
+            .unwrap_or(serde_json::Value::Array(vec![]));
+        cx.emit(BrowserEthEvent { id, method, params });
+    }
+
+    pub fn complete_eth(&self, id: u64, result: Result<serde_json::Value, (i64, String)>) {
+        let payload = match result {
+            Ok(value) => serde_json::json!({"ok": true, "id": id, "result": value}),
+            Err((code, message)) => serde_json::json!({
+                "ok": false,
+                "id": id,
+                "error": { "code": code, "message": message }
+            }),
+        };
+        let Ok(json) = serde_json::to_string(&payload) else {
+            return;
+        };
+        let script = format!("window.__wakuEthDone && window.__wakuEthDone({json})");
+        #[cfg(any(target_os = "macos", target_os = "windows"))]
+        if let Some(host) = &self.host {
+            let _ = host.webview.evaluate_script(&script);
+        }
+    }
+
     pub fn new(window: &mut Window, cx: &mut Context<Self>) -> Self {
         let address = cx.new(|cx| {
             ComposerInput::new(window, cx)
@@ -1345,6 +1401,7 @@ impl BrowserView {
             })
         };
 
+        let on_ipc = deferred.clone();
         let built = wry::WebViewBuilder::new()
             .with_bounds(wry::Rect {
                 position: LogicalPosition::new(0.0, 0.0).into(),
@@ -1355,6 +1412,11 @@ impl BrowserView {
             .with_accept_first_mouse(true)
             .with_devtools(true)
             .with_user_agent(USER_AGENT)
+            .with_initialization_script(ETH_PROVIDER_JS)
+            .with_ipc_handler(move |request| {
+                let body = request.body().clone();
+                on_ipc.update(move |this, cx| this.eth_ipc_received(&body, cx));
+            })
             .with_navigation_handler(|_| true)
             .with_on_page_load_handler(move |event, url| {
                 let event = match event {

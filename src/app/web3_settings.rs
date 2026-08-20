@@ -1,7 +1,9 @@
 //! Settings → Networks and Wallets. Daemon owns the files; frames read cache.
 
 use super::*;
-use waku_client::web3::{EvmNetwork, OkxStatus, WalletAccount, WalletSource};
+use waku_client::web3::{
+    EvmNetwork, OkxStatus, WalletAccount, WalletBalance, WalletBalanceSnapshot, WalletSource,
+};
 
 #[derive(Clone, Copy)]
 pub(super) enum WalletDialogKind {
@@ -58,6 +60,7 @@ impl Waku {
                         this.web3_wallets = Some(wallets);
                         this.web3_okx = Some(okx);
                         this.web3_error = None;
+                        this.refresh_wallet_balances(cx);
                     }
                     Err(error) => this.web3_error = Some(error.to_string()),
                 }
@@ -122,6 +125,8 @@ impl Waku {
         }
         column = column.child(
             div().flex().flex_wrap().gap(px(8.0)).children([
+                settings_button(&theme, "web3-refresh-balances", tr!("web3.refresh_balances"))
+                    .on_click(cx.listener(|this, _, _, cx| this.refresh_wallet_balances(cx))),
                 settings_button(&theme, "web3-create-wallet", tr!("web3.create_wallet")).on_click(
                     cx.listener(|this, _, window, cx| {
                         this.open_wallet_dialog(WalletDialogKind::Create, window, cx)
@@ -281,9 +286,11 @@ impl Waku {
         } else {
             wallet.address.clone()
         };
+        let snapshot = self.wallet_balance_snapshot(&wallet.id);
         settings_card(theme)
             .child(settings_title(theme, wallet.label.clone()))
             .child(settings_hint(theme, format!("{source} · {detail}")))
+            .child(self.render_wallet_balances(wallet, snapshot.as_ref(), theme))
             .child(
                 settings_button(theme, ("web3-wallet-remove", index), tr!("web3.remove")).on_click(
                     cx.listener({
@@ -292,6 +299,36 @@ impl Waku {
                     }),
                 ),
             )
+    }
+
+    fn wallet_balance_snapshot(&self, wallet_id: &str) -> Option<WalletBalanceSnapshot> {
+        self.web3_balances.as_ref()?.iter().find(|row| row.wallet_id == wallet_id).cloned()
+    }
+
+    fn render_wallet_balances(
+        &self,
+        wallet: &WalletAccount,
+        snapshot: Option<&WalletBalanceSnapshot>,
+        theme: &Theme,
+    ) -> Div {
+        if wallet.address.trim().is_empty() {
+            return settings_hint(theme, tr!("web3.balance_no_address"));
+        }
+        match snapshot {
+            None => settings_hint(theme, tr!("web3.balance_loading")),
+            Some(snapshot) if snapshot.balances.is_empty() => {
+                settings_hint(theme, tr!("web3.balance_no_network"))
+            }
+            Some(snapshot) => {
+                let line = snapshot
+                    .balances
+                    .iter()
+                    .map(format_balance_line)
+                    .collect::<Vec<_>>()
+                    .join("  ·  ");
+                settings_hint(theme, line)
+            }
+        }
     }
 
     fn render_network_dialog(
@@ -341,8 +378,10 @@ impl Waku {
         theme: &Theme,
         cx: &mut Context<Self>,
     ) -> Div {
+        let (title, hint) = wallet_dialog_copy(dialog.kind);
         settings_card(theme)
-            .child(settings_title(theme, tr!("web3.add_wallet")))
+            .child(settings_title(theme, title))
+            .child(settings_hint(theme, hint))
             .child(form_field("web3-wallet-label", dialog.label.clone()))
             .when(!matches!(dialog.kind, WalletDialogKind::Create), |card| {
                 card.child(form_field("web3-wallet-second", dialog.second.clone()))
@@ -409,10 +448,24 @@ impl Waku {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
+        let second_placeholder = match kind {
+            WalletDialogKind::Create => String::new(),
+            WalletDialogKind::Import => tr!("web3.import_wallet_placeholder"),
+            WalletDialogKind::Watch => tr!("web3.watch_wallet_placeholder"),
+            WalletDialogKind::DevEnvKey => tr!("web3.env_wallet_placeholder"),
+        };
         self.web3_wallet_dialog = Some(WalletDialog {
             kind,
-            label: cx.new(|cx| ComposerInput::new(window, cx).search_field()),
-            second: cx.new(|cx| ComposerInput::new(window, cx).search_field()),
+            label: cx.new(|cx| {
+                ComposerInput::new(window, cx)
+                    .search_field()
+                    .placeholder(tr!("web3.wallet_label_placeholder"))
+            }),
+            second: cx.new(|cx| {
+                ComposerInput::new(window, cx)
+                    .search_field()
+                    .placeholder(second_placeholder)
+            }),
         });
         cx.notify();
     }
@@ -462,6 +515,26 @@ impl Waku {
         let kind = dialog.kind;
         let label = dialog.label.read(cx).content().trim().to_string();
         let second = dialog.second.read(cx).content().trim().to_string();
+        if label.is_empty() {
+            self.web3_error = Some(tr!("web3.wallet_label_empty"));
+            cx.notify();
+            return;
+        }
+        if matches!(kind, WalletDialogKind::Import) && second.is_empty() {
+            self.web3_error = Some(tr!("web3.import_key_empty"));
+            cx.notify();
+            return;
+        }
+        if matches!(kind, WalletDialogKind::Watch) && second.is_empty() {
+            self.web3_error = Some(tr!("web3.watch_address_empty"));
+            cx.notify();
+            return;
+        }
+        if matches!(kind, WalletDialogKind::DevEnvKey) && second.is_empty() {
+            self.web3_error = Some(tr!("web3.env_name_empty"));
+            cx.notify();
+            return;
+        }
         self.web3_wallet_dialog = None;
         let daemon = self.daemon.client();
         self.web3_pending = true;
@@ -544,6 +617,7 @@ impl Waku {
                         this.web3_wallets = Some(wallets);
                         this.web3_backup_hex = backup;
                         this.web3_error = None;
+                        this.refresh_wallet_balances(cx);
                     }
                     Err(error) => this.web3_error = Some(error.to_string()),
                 }
@@ -557,9 +631,10 @@ impl Waku {
         self.web3_call(
             waku_client::Command::Web3UpsertNetwork { network },
             cx,
-            |this, payload| {
+            |this, payload, cx| {
                 if let waku_client::ResponsePayload::Web3Networks { networks } = payload {
                     this.web3_networks = Some(networks);
+                    this.refresh_wallet_balances(cx);
                 }
             },
         );
@@ -569,9 +644,10 @@ impl Waku {
         self.web3_call(
             waku_client::Command::Web3RemoveNetwork { id },
             cx,
-            |this, payload| {
+            |this, payload, cx| {
                 if let waku_client::ResponsePayload::Web3Networks { networks } = payload {
                     this.web3_networks = Some(networks);
+                    this.refresh_wallet_balances(cx);
                 }
             },
         );
@@ -581,12 +657,53 @@ impl Waku {
         self.web3_call(
             waku_client::Command::Web3RemoveWallet { id },
             cx,
-            |this, payload| {
+            |this, payload, cx| {
                 if let waku_client::ResponsePayload::Web3Wallets { wallets } = payload {
                     this.web3_wallets = Some(wallets);
+                    this.refresh_wallet_balances(cx);
                 }
             },
         );
+    }
+
+    fn refresh_wallet_balances(&mut self, cx: &mut Context<Self>) {
+        let Some(wallets) = &self.web3_wallets else {
+            return;
+        };
+        if !wallets.iter().any(|wallet| !wallet.address.trim().is_empty()) {
+            self.web3_balances = Some(Vec::new());
+            cx.notify();
+            return;
+        }
+        self.web3_balances_generation += 1;
+        let generation = self.web3_balances_generation;
+        let daemon = self.daemon.client();
+        cx.spawn(async move |this, cx| {
+            let result = cx
+                .background_executor()
+                .spawn(async move {
+                    daemon.request(
+                        Uuid::nil(),
+                        Uuid::nil(),
+                        waku_client::Command::Web3WalletBalances { wallet_id: None },
+                    )
+                })
+                .await;
+            let _ = this.update(cx, |this, cx| {
+                if this.web3_balances_generation != generation {
+                    return;
+                }
+                match result {
+                    Ok(waku_client::ResponsePayload::Web3WalletBalances { wallets }) => {
+                        this.web3_balances = Some(wallets);
+                    }
+                    Ok(_) => this.web3_error = Some(tr!("web3.balance_invalid")),
+                    Err(error) => this.web3_error = Some(error.to_string()),
+                }
+                cx.notify();
+            });
+        })
+        .detach();
     }
 
     fn save_okx_key(&mut self, cx: &mut Context<Self>) {
@@ -599,7 +716,7 @@ impl Waku {
                 enabled: None,
             },
             cx,
-            |this, payload| {
+            |this, payload, _cx| {
                 if let waku_client::ResponsePayload::Web3OkxStatus { status } = payload {
                     this.web3_okx = Some(status);
                 }
@@ -614,7 +731,7 @@ impl Waku {
                 enabled: Some(enabled),
             },
             cx,
-            |this, payload| {
+            |this, payload, _cx| {
                 if let waku_client::ResponsePayload::Web3OkxStatus { status } = payload {
                     this.web3_okx = Some(status);
                 }
@@ -626,7 +743,7 @@ impl Waku {
         &mut self,
         command: waku_client::Command,
         cx: &mut Context<Self>,
-        apply: impl FnOnce(&mut Self, waku_client::ResponsePayload) + Send + 'static,
+        apply: impl FnOnce(&mut Self, waku_client::ResponsePayload, &mut Context<Self>) + Send + 'static,
     ) {
         let daemon = self.daemon.client();
         self.web3_generation += 1;
@@ -642,7 +759,7 @@ impl Waku {
                 }
                 match result {
                     Ok(payload) => {
-                        apply(this, payload);
+                        apply(this, payload, cx);
                         this.web3_error = None;
                     }
                     Err(error) => this.web3_error = Some(error.to_string()),
@@ -651,6 +768,14 @@ impl Waku {
             });
         })
         .detach();
+    }
+}
+
+fn format_balance_line(balance: &WalletBalance) -> String {
+    if balance.error.is_some() {
+        format!("{} —", balance.symbol)
+    } else {
+        format!("{} {}", balance.display, balance.symbol)
     }
 }
 
@@ -726,6 +851,24 @@ fn settings_button(
         .text_color(theme.text)
         .hover(|style| style.bg(theme.overlay))
         .child(label.into())
+}
+
+fn wallet_dialog_copy(kind: WalletDialogKind) -> (String, String) {
+    match kind {
+        WalletDialogKind::Create => (
+            tr!("web3.create_wallet_title"),
+            tr!("web3.create_wallet_hint"),
+        ),
+        WalletDialogKind::Import => (
+            tr!("web3.import_wallet_title"),
+            tr!("web3.import_wallet_hint"),
+        ),
+        WalletDialogKind::Watch => (
+            tr!("web3.watch_wallet_title"),
+            tr!("web3.watch_wallet_hint"),
+        ),
+        WalletDialogKind::DevEnvKey => (tr!("web3.env_wallet_title"), tr!("web3.env_wallet_hint")),
+    }
 }
 
 fn form_field(id: impl Into<ElementId>, input: Entity<ComposerInput>) -> Div {

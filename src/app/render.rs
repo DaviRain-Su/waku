@@ -240,6 +240,7 @@ impl Render for Waku {
             let command_palette = self.render_command_palette(window, cx);
             let commit_dialog = self.render_commit_dialog(cx);
             let deploy_dialog = self.render_deploy_dialog(cx);
+            let sign_dialog = self.render_sign_dialog(cx);
             let toast = self.render_active_toast(cx);
             let content = div()
                 .relative()
@@ -250,6 +251,7 @@ impl Render for Waku {
                 .children(command_palette)
                 .children(commit_dialog)
                 .children(deploy_dialog)
+                .children(sign_dialog)
                 .children(image_preview)
                 .into_any_element();
             return self.render_window_frame(content, window, cx);
@@ -265,6 +267,7 @@ impl Render for Waku {
         let command_palette = self.render_command_palette(window, cx);
         let commit_dialog = self.render_commit_dialog(cx);
         let deploy_dialog = self.render_deploy_dialog(cx);
+        let sign_dialog = self.render_sign_dialog(cx);
         let toast = self.render_active_toast(cx);
         let content = div()
             .key_context("Waku")
@@ -389,6 +392,7 @@ impl Render for Waku {
             .children(command_palette)
             .children(commit_dialog)
             .children(deploy_dialog)
+            .children(sign_dialog)
             .children(image_preview)
             .into_any_element();
 

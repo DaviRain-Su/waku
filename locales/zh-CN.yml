@@ -285,6 +285,27 @@ web3.import_wallet: 导入十六进制
 web3.watch_wallet: 仅观察
 web3.env_wallet: 开发环境变量
 web3.add_wallet: 添加钱包
+web3.wallet_label_placeholder: 名称，例如 X Layer 部署
+web3.create_wallet_title: 创建本地钱包
+web3.create_wallet_hint: 在这台电脑上生成一把新私钥。钱包列表只保存地址——备份十六进制出现时请立刻复制，之后不会再显示。
+web3.import_wallet_title: 导入十六进制私钥
+web3.import_wallet_hint: 粘贴 32 字节 secp256k1 私钥。64 位十六进制，可带或不带 0x。不接受助记词或 JSON keystore。
+web3.import_wallet_placeholder: 0x 后跟 64 位十六进制
+web3.watch_wallet_title: 仅观察地址
+web3.watch_wallet_hint: 只用来显示的地址，不能签名或部署。适合跟踪合约，或钥匙在别的钱包里的账户。
+web3.watch_wallet_placeholder: 0x 后跟 40 位十六进制
+web3.env_wallet_title: 开发环境变量
+web3.env_wallet_hint: 填写已经存有十六进制私钥的环境变量名，不要填私钥本身。只在部署时读取，且仅用于测试网。
+web3.env_wallet_placeholder: 例如 DEV_PRIVATE_KEY
+web3.wallet_label_empty: 请填写钱包名称
+web3.import_key_empty: 请粘贴十六进制私钥
+web3.watch_address_empty: 请粘贴 0x 地址
+web3.env_name_empty: 请填写环境变量名，不要填私钥
+web3.refresh_balances: 刷新余额
+web3.balance_loading: 正在查询余额…
+web3.balance_no_address: 还没有地址——创建或导入后会显示余额
+web3.balance_no_network: 请先在设置 → 网络中启用一个网络
+web3.balance_invalid: 无法读取余额
 web3.backup_key: 立即备份此密钥
 web3.backup_key_description: 此十六进制密钥只显示一次，之后 Waku 不会再展示。部署前请先到 X Layer 测试网水龙头给该地址打 OKB。
 web3.source_local: 本地
@@ -302,6 +323,20 @@ web3.faucet: 从 X Layer 水龙头领取测试网 OKB
 web3.open_explorer: 在浏览器中打开
 web3.deploy_no_network: 请先在设置 → 网络中启用一个网络
 web3.deploy_no_wallet: 请先在设置 → 钱包中创建或导入可签名钱包
+web3.preview_no_wallet: 请先在设置 → 钱包中创建或导入可签名钱包，然后再试
+web3.preview_connected: 预览正在使用 Waku 钱包
+web3.sign_title: 确认交易
+web3.sign_description: 预览页要用设置 → 钱包里的密钥在这台电脑上签名。
+web3.sign_to: 发送到
+web3.sign_data: 数据
+web3.sign_create: 创建合约
+web3.sign_confirm: 签名
+web3.sign_reject: 拒绝
+web3.sign_rejected: 已在 Waku 中拒绝
+web3.sign_busy: 另有一笔交易正在等待确认
+web3.sign_sent: 交易已发送
+web3.signing: 正在签名…
+web3.sign_message_unsupported: 暂不支持消息签名。合约调用请在 Waku 弹出的确认框里点「签名」。
 web3.artifact: 产物
 web3.network: 网络
 web3.wallet: 钱包
@@ -351,6 +386,7 @@ preview.button: 预览
 preview.scanning: 正在查找本地前端…
 preview.none: 未发现前端
 preview.no_workspace: 请先选择带有项目文件夹的会话再预览
+preview.opened_externally: 已在系统浏览器中打开同一地址，连接 OKX / MetaMask 请用那个标签页。
 ship.title: 发布
 ship.description: 预览或托管前端，并部署通过门禁的合约。可以只发其中一段。
 ship.frontend: 前端

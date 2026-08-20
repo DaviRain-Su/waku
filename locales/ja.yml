@@ -300,6 +300,27 @@ web3.import_wallet: 16進をインポート
 web3.watch_wallet: ウォッチのみ
 web3.env_wallet: 開発用環境変数
 web3.add_wallet: ウォレットを追加
+web3.wallet_label_placeholder: "ラベル（例: X Layer デプロイ）"
+web3.create_wallet_title: ローカルウォレットを作成
+web3.create_wallet_hint: このコンピュータで新しい秘密鍵を生成します。ウォレット一覧にはアドレスだけが残ります。バックアップの 16 進は一度だけ表示されるので、その場でコピーしてください。
+web3.import_wallet_title: 16 進キーをインポート
+web3.import_wallet_hint: 32 バイトの secp256k1 秘密鍵を貼り付けます。64 桁の 16 進、0x の有無はどちらでも可。シードフレーズや JSON キーストアは使えません。
+web3.import_wallet_placeholder: 0x に続く 64 桁の 16 進
+web3.watch_wallet_title: ウォッチ専用アドレス
+web3.watch_wallet_hint: 表示専用のアドレスです。署名やデプロイはできません。コントラクトの追跡や、別ウォレットにある鍵の監視に使います。
+web3.watch_wallet_placeholder: 0x に続く 40 桁の 16 進
+web3.env_wallet_title: 開発用環境変数
+web3.env_wallet_hint: 16 進の秘密鍵が入っている環境変数の名前を入力します。鍵そのものは入れないでください。デプロイ時にだけ解決され、テストネット専用です。
+web3.env_wallet_placeholder: "例: DEV_PRIVATE_KEY"
+web3.wallet_label_empty: ウォレットのラベルを入力してください
+web3.import_key_empty: 16 進の秘密鍵を貼り付けてください
+web3.watch_address_empty: 0x アドレスを貼り付けてください
+web3.env_name_empty: 環境変数名を入力してください（鍵そのものではありません）
+web3.refresh_balances: 残高を更新
+web3.balance_loading: 残高を確認中…
+web3.balance_no_address: アドレスがまだありません。作成またはインポート後に残高が表示されます
+web3.balance_no_network: 残高を表示するには設定 → ネットワークでネットワークを有効にしてください
+web3.balance_invalid: 残高を読み取れませんでした
 web3.backup_key: 今すぐこのキーをバックアップ
 web3.backup_key_description: この 16 進キーは一度だけ表示されます。Waku は再表示しません。デプロイ前に X Layer テストネットのフォーセットでアドレスに OKB を入れてください。
 web3.source_local: ローカル
@@ -317,6 +338,20 @@ web3.faucet: X Layer フォーセットでテストネット OKB を入手
 web3.open_explorer: エクスプローラーで開く
 web3.deploy_no_network: 先に設定 → ネットワークでネットワークを有効にしてください
 web3.deploy_no_wallet: 先に設定 → ウォレットで署名用ウォレットを作成またはインポートしてください
+web3.preview_no_wallet: 先に設定 → ウォレットで署名用ウォレットを作成またはインポートしてから、もう一度試してください
+web3.preview_connected: プレビューは Waku ウォレットを使っています
+web3.sign_title: トランザクションを確認
+web3.sign_description: プレビューページが、設定 → ウォレットの鍵でこのコンピュータに署名させようとしています。
+web3.sign_to: 送信先
+web3.sign_data: データ
+web3.sign_create: コントラクト作成
+web3.sign_confirm: 署名
+web3.sign_reject: 拒否
+web3.sign_rejected: Waku で拒否しました
+web3.sign_busy: 別のトランザクションが確認待ちです
+web3.sign_sent: トランザクションを送信しました
+web3.signing: 署名中…
+web3.sign_message_unsupported: メッセージ署名は未対応です。コントラクト呼び出しは Waku の確認ダイアログで署名してください。
 web3.artifact: 成果物
 web3.network: ネットワーク
 web3.wallet: ウォレット
@@ -366,6 +401,7 @@ preview.button: プレビュー
 preview.scanning: ローカルフロントエンドを検索中…
 preview.none: フロントエンドが見つかりません
 preview.no_workspace: プレビューする前に、プロジェクトフォルダのあるセッションを選んでください
+preview.opened_externally: 同じアドレスをシステムのブラウザでも開きました。ウォレット拡張はそちらのタブで使ってください。
 ship.title: シップ
 ship.description: フロントエンドのプレビューまたはホスティングと、ゲート通過済みコントラクトのデプロイ。どちらか一方だけでも送れます。
 ship.frontend: フロントエンド

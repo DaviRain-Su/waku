@@ -351,6 +351,124 @@ pub fn deploy(
     Ok(record)
 }
 
+/// Sign and broadcast a dapp `eth_sendTransaction` with the in-app signer.
+/// `to` is `None` for contract creation. Alloy fills nonce, gas, and fees.
+pub fn send_tx(
+    to: Option<&str>,
+    data: &str,
+    network: &EvmNetwork,
+    wallet: &WalletAccount,
+    secrets: &WalletSecrets,
+) -> anyhow::Result<String> {
+    preflight(network, wallet)?;
+    let data = data.trim();
+    let data = if data.is_empty() { "0x" } else { data };
+    let runtime = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .map_err(|error| anyhow!("could not start send runtime: {error}"))?;
+    runtime.block_on(async {
+        match wallet.source {
+            WalletSource::Watch => bail!("watch-only wallets cannot sign"),
+            WalletSource::Local => {
+                let sent = send_with_local(
+                    secrets,
+                    &wallet.id,
+                    &network.rpc_url,
+                    network.chain_id,
+                    to,
+                    data,
+                )
+                .await?;
+                Ok(sent.tx_hash)
+            }
+            WalletSource::DevEnvKey => {
+                let env_name = wallet.env_key_name.as_deref().unwrap_or("");
+                let key = match std::env::var(env_name) {
+                    Ok(key) if !key.trim().is_empty() => key,
+                    Ok(_) => bail!("env var '{env_name}' is empty"),
+                    Err(_) => bail!("env var '{env_name}' is not set"),
+                };
+                let sent = send_with_key(
+                    key.trim(),
+                    &network.rpc_url,
+                    network.chain_id,
+                    to,
+                    data,
+                )
+                .await?;
+                Ok(sent.tx_hash)
+            }
+            WalletSource::WalletConnect => {
+                bail!("WalletConnect was removed — create or import a local key")
+            }
+        }
+    })
+}
+
+pub fn json_rpc(
+    rpc_url: &str,
+    method: &str,
+    params: serde_json::Value,
+) -> anyhow::Result<serde_json::Value> {
+    let mut urls = vec![rpc_url.trim().to_string()];
+    if rpc_url.contains("xlayer") {
+        for extra in [
+            "https://testrpc.xlayer.tech/terigon",
+            "https://xlayertestrpc.okx.com/terigon",
+            "https://testrpc.xlayer.tech",
+            "https://xlayertestrpc.okx.com",
+        ] {
+            if !urls.iter().any(|url| url == extra) {
+                urls.push(extra.to_string());
+            }
+        }
+    }
+    let client = reqwest::blocking::Client::builder()
+        .timeout(std::time::Duration::from_secs(12))
+        .build()?;
+    let mut last_error = anyhow!("no RPC URL");
+    for url in urls {
+        match json_rpc_once(&client, &url, method, &params) {
+            Ok(value) => return Ok(value),
+            Err(error) => last_error = error,
+        }
+    }
+    Err(last_error)
+}
+
+fn json_rpc_once(
+    client: &reqwest::blocking::Client,
+    rpc_url: &str,
+    method: &str,
+    params: &serde_json::Value,
+) -> anyhow::Result<serde_json::Value> {
+    let response = client
+        .post(rpc_url)
+        .json(&serde_json::json!({
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": method,
+            "params": params,
+        }))
+        .send()
+        .map_err(|error| anyhow!("RPC {method} via {rpc_url}: {error}"))?;
+    let body: serde_json::Value = response
+        .json()
+        .map_err(|error| anyhow!("RPC {method} decode via {rpc_url}: {error}"))?;
+    if let Some(error) = body.get("error") {
+        let message = error
+            .get("message")
+            .and_then(serde_json::Value::as_str)
+            .unwrap_or("RPC error");
+        bail!("{message}");
+    }
+    Ok(body
+        .get("result")
+        .cloned()
+        .unwrap_or(serde_json::Value::Null))
+}
+
 fn read_bytecode(path: &Path) -> anyhow::Result<String> {
     let raw = std::fs::read_to_string(path)
         .map_err(|error| anyhow!("bin missing or unreadable at {}: {error}", path.display()))?;

@@ -1205,6 +1205,11 @@ pub struct Waku {
     /// Window-modal Web3 deploy UI. Artifact scan and signing run off-thread;
     /// frames only read this in-memory value.
     deploy_dialog: Option<deploy_dialog::DeployDialogState>,
+    /// Confirm an in-app `eth_sendTransaction` from the preview webview.
+    sign_dialog: Option<sign_dialog::SignTxDialogState>,
+    /// Preview `window.ethereum` has been granted accounts this session.
+    preview_connected: bool,
+    preview_network_id: Option<String>,
     web3_networks: Option<Vec<waku_client::web3::EvmNetwork>>,
     web3_wallets: Option<Vec<waku_client::web3::WalletAccount>>,
     web3_okx: Option<waku_client::web3::OkxStatus>,
@@ -1214,6 +1219,8 @@ pub struct Waku {
     web3_network_dialog: Option<web3_settings::NetworkDialog>,
     web3_wallet_dialog: Option<web3_settings::WalletDialog>,
     web3_backup_hex: Option<String>,
+    web3_balances: Option<Vec<waku_client::web3::WalletBalanceSnapshot>>,
+    web3_balances_generation: u64,
     web3_okx_input: Entity<ComposerInput>,
     mcp_servers: Option<Vec<waku_client::ship::McpServer>>,
     mcp_tokens: Option<Vec<waku_client::ship::HostingTokenStatus>>,
@@ -1591,6 +1598,7 @@ mod runtime;
 mod sessions;
 mod settings;
 mod sidebar;
+mod sign_dialog;
 mod skills_page;
 mod streaming;
 mod transcript;
@@ -1608,6 +1616,7 @@ pub use command_palette::init as init_command_palette;
 pub use commit_dialog::init as init_commit_dialog_keys;
 use components::*;
 pub use deploy_dialog::init as init_deploy_dialog_keys;
+pub use sign_dialog::init as init_sign_dialog_keys;
 pub use image_preview::init as init_image_preview_keys;
 pub use settings::init as init_settings_keys;
 pub use sidebar::init as init_sidebar_keys;
@@ -2783,6 +2792,9 @@ impl Waku {
                 branch_operation_pending: false,
                 commit_dialog: None,
                 deploy_dialog: None,
+                sign_dialog: None,
+                preview_connected: false,
+                preview_network_id: None,
                 web3_networks: None,
                 web3_wallets: None,
                 web3_okx: None,
@@ -2792,6 +2804,8 @@ impl Waku {
                 web3_network_dialog: None,
                 web3_wallet_dialog: None,
                 web3_backup_hex: None,
+                web3_balances: None,
+                web3_balances_generation: 0,
                 web3_okx_input,
                 mcp_servers: None,
                 mcp_tokens: None,

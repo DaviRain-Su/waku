@@ -118,6 +118,11 @@ impl Waku {
             );
             return;
         };
+        // WKWebView has no Chrome/OKX/MetaMask extensions. Keep the in-app
+        // preview, and also open the same loopback URL in the system browser
+        // so a dApp that needs `window.ethereum` can actually connect.
+        cx.open_url(&url);
+        self.show_toast(tr!("preview.opened_externally"));
         self.open_browser_url(url, cx);
     }
 

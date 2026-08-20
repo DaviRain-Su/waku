@@ -49,6 +49,30 @@ pub struct WalletAccount {
     pub env_key_name: Option<String>,
 }
 
+/// Native-token balance on one network. `wei` is a decimal integer string so
+/// JS never sees a 256-bit quantity as a number. `display` is already trimmed
+/// for the UI (up to 6 fractional digits).
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+pub struct WalletBalance {
+    pub network_id: String,
+    pub network_name: String,
+    pub symbol: String,
+    pub wei: String,
+    pub display: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub error: Option<String>,
+}
+
+/// Live balances for one address-book row. Not persisted.
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+pub struct WalletBalanceSnapshot {
+    pub wallet_id: String,
+    pub address: String,
+    pub balances: Vec<WalletBalance>,
+}
+
 /// One-time create response. `backup_hex` is never persisted.
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
@@ -130,7 +154,7 @@ pub fn builtin_networks() -> Vec<EvmNetwork> {
             name: "X Layer Testnet".into(),
             chain_id: 1952,
             rpc_url: "https://testrpc.xlayer.tech/terigon".into(),
-            explorer_url: Some("https://www.okx.com/web3/explorer/xlayer-test".into()),
+            explorer_url: Some("https://www.oklink.com/xlayer-test".into()),
             currency_symbol: "OKB".into(),
             builtin: true,
             enabled: true,
@@ -186,6 +210,28 @@ pub fn is_builtin_network_id(id: &str) -> bool {
     builtin_networks().iter().any(|network| network.id == id)
 }
 
+/// Extra public endpoints to try when `rpc_url` fails. Order is primary first.
+pub fn rpc_urls(network: &EvmNetwork) -> Vec<String> {
+    let mut urls = vec![network.rpc_url.trim().to_string()];
+    let extras: &[&str] = match network.id.as_str() {
+        "xlayer-testnet" => &[
+            "https://testrpc.xlayer.tech/terigon",
+            "https://xlayertestrpc.okx.com/terigon",
+            "https://testrpc.xlayer.tech",
+            "https://xlayertestrpc.okx.com",
+        ],
+        "xlayer-mainnet" => &["https://rpc.xlayer.tech", "https://xlayerrpc.okx.com"],
+        _ => &[],
+    };
+    for extra in extras {
+        if !urls.iter().any(|url| url == extra) {
+            urls.push((*extra).to_string());
+        }
+    }
+    urls.retain(|url| !url.is_empty());
+    urls
+}
+
 /// X Layer testnet faucet. Other networks, including Anvil, have none.
 pub fn faucet_url(network_id: &str) -> Option<&'static str> {
     (network_id == "xlayer-testnet").then_some("https://web3.okx.com/xlayer/faucet")
@@ -197,6 +243,32 @@ pub fn explorer_address_url(explorer_url: &str, address: &str) -> String {
         explorer_url.trim_end_matches('/'),
         address
     )
+}
+
+/// Format a decimal wei amount as a display string with up to 6 fractional
+/// digits. Values below 10⁻⁶ still show as `0.000000` so a dust balance is
+/// not mistaken for empty.
+pub fn format_wei(wei: &str) -> String {
+    let digits: String = wei.trim().chars().filter(|c| c.is_ascii_digit()).collect();
+    if digits.is_empty() || digits.chars().all(|c| c == '0') {
+        return "0".into();
+    }
+    let padded = format!("{digits:0>18}");
+    let split = padded.len() - 18;
+    let whole = match padded[..split].trim_start_matches('0') {
+        "" => "0",
+        rest => rest,
+    };
+    let frac = &padded[split..];
+    let frac6 = &frac[..6.min(frac.len())];
+    let frac_trimmed = frac6.trim_end_matches('0');
+    if !frac_trimmed.is_empty() {
+        format!("{whole}.{frac_trimmed}")
+    } else if frac.chars().any(|c| c != '0') {
+        format!("{whole}.000000")
+    } else {
+        whole.to_string()
+    }
 }
 
 pub fn short_digest(digest: &str) -> String {
@@ -234,6 +306,15 @@ mod tests {
         );
         assert_eq!(faucet_url("anvil"), None);
         assert_eq!(faucet_url("xlayer-mainnet"), None);
+    }
+
+    #[test]
+    fn format_wei_trims_trailing_zeros() {
+        assert_eq!(format_wei("0"), "0");
+        assert_eq!(format_wei("1000000000000000000"), "1");
+        assert_eq!(format_wei("1500000000000000000"), "1.5");
+        assert_eq!(format_wei("123456000000000000"), "0.123456");
+        assert_eq!(format_wei("1"), "0.000000");
     }
 
     #[test]

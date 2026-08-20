@@ -20,11 +20,11 @@ use crate::ship::{
 };
 use crate::web3::{
     CreatedWallet, DeployArtifact, DeploymentRecord, EvmNetwork, OkxStatus, PfToolchainStatus,
-    WalletAccount,
+    WalletAccount, WalletBalanceSnapshot,
 };
 use crate::workspace::{WorkspaceOperation, WorkspaceResult};
 
-pub const PROTOCOL_VERSION: u32 = 8;
+pub const PROTOCOL_VERSION: u32 = 9;
 pub const MAX_WIRE_MESSAGE_BYTES: usize = 48 * 1024 * 1024;
 pub const DAEMON_TOKEN_ENV: &str = "WAKU_DAEMON_TOKEN";
 pub const DAEMON_ADDRESS_ENV: &str = "WAKU_DAEMON_ADDRESS";
@@ -265,6 +265,10 @@ pub enum Command {
     Web3RemoveWallet {
         id: String,
     },
+    Web3WalletBalances {
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        wallet_id: Option<String>,
+    },
     Web3OkxStatus,
     Web3SetOkx {
         api_key: Option<String>,
@@ -287,6 +291,17 @@ pub enum Command {
         #[serde(default, skip_serializing_if = "Option::is_none")]
         #[ts(type = "string | null")]
         cwd: Option<PathBuf>,
+    },
+    Web3SendTx {
+        network_id: String,
+        wallet_id: String,
+        to: Option<String>,
+        data: String,
+    },
+    Web3Rpc {
+        network_id: String,
+        method: String,
+        params: Value,
     },
     Web3Deployments,
     PfStatus,
@@ -542,6 +557,9 @@ pub enum ResponsePayload {
     Web3WalletCreated {
         created: CreatedWallet,
     },
+    Web3WalletBalances {
+        wallets: Vec<WalletBalanceSnapshot>,
+    },
     Web3OkxStatus {
         status: OkxStatus,
     },
@@ -550,6 +568,12 @@ pub enum ResponsePayload {
     },
     Web3DeploySend {
         record: DeploymentRecord,
+    },
+    Web3SendTx {
+        tx_hash: String,
+    },
+    Web3Rpc {
+        result: Value,
     },
     Web3Deployments {
         deployments: Vec<DeploymentRecord>,
@@ -652,7 +676,7 @@ mod tests {
 
         assert_eq!(json["type"], "forkSessionFromResponse");
         assert_eq!(json["turnCount"], 7);
-        assert_eq!(PROTOCOL_VERSION, 8);
+        assert_eq!(PROTOCOL_VERSION, 9);
     }
 
     #[test]
@@ -661,7 +685,7 @@ mod tests {
 
         assert_eq!(json["type"], "rewindSessionToMessage");
         assert_eq!(json["turnCount"], 4);
-        assert_eq!(PROTOCOL_VERSION, 8);
+        assert_eq!(PROTOCOL_VERSION, 9);
     }
 
     #[test]

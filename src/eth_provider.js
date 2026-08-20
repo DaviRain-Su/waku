@@ -47,6 +47,7 @@
   }
   var provider = {
     isWaku: true,
+    isProofShip: true,
     isMetaMask: false,
     request: function (args) {
       args = args || {};
@@ -77,9 +78,9 @@
   window.__wakuEth = provider;
   var info = Object.freeze({
     uuid: "a8e1d6c4-2b7f-4c19-9e5a-7f3b1d0c8e22",
-    name: "Waku",
+    name: "ProofShip",
     rdns: "sh.waku.wallet",
-    icon: "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%23111827'/><text x='16' y='22' text-anchor='middle' font-size='16' fill='%23fff' font-family='system-ui'>W</text></svg>",
+    icon: "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%230B0F14'/><path d='M7 16 L16 8 L25 16 L16 13 Z' fill='%23F97316'/><path d='M11 18 L16 24 L21 18 L16 20 Z' fill='%23A8B3C2'/></svg>",
   });
   function announce() {
     try {

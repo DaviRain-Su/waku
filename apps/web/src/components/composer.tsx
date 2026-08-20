@@ -9,7 +9,7 @@ import type {
   Project,
   ProviderModel,
   ProviderProbe,
-} from '@waku/client'
+} from '@proofship/client'
 import {
   useEffect,
   useRef,
@@ -26,7 +26,7 @@ import { PreviewableImage } from '@/components/image-preview'
 import { ModelPicker } from '@/components/model-picker'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
-import { FileTypeIcon, WakuIcon } from '@/components/waku-icon'
+import { FileTypeIcon, WakuIcon } from '@/components/proofship-icon'
 import {
   useComposerCommands,
   useComposerFiles,

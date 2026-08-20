@@ -5,7 +5,7 @@ use serde_json::{Value, json};
 
 use super::*;
 use crate::browser::{BrowserEthEvent, BrowserView};
-use waku_client::web3::{EvmNetwork, WalletAccount, WalletSource};
+use proofship_client::web3::{EvmNetwork, WalletAccount, WalletSource};
 
 actions!(waku_sign_dialog, [DismissSignDialog]);
 
@@ -53,9 +53,7 @@ impl Waku {
                 browser.update(cx, |view, _| view.complete_eth(id, Ok(json!(accounts))));
             }
             "eth_requestAccounts" => self.preview_request_accounts(browser, id, cx),
-            "eth_sendTransaction" => {
-                self.preview_send_transaction(browser, id, &event.params, cx)
-            }
+            "eth_sendTransaction" => self.preview_send_transaction(browser, id, &event.params, cx),
             "eth_getBalance"
             | "eth_call"
             | "eth_estimateGas"
@@ -171,13 +169,13 @@ impl Waku {
                     match daemon.request(
                         Uuid::nil(),
                         Uuid::nil(),
-                        waku_client::Command::Web3Rpc {
+                        proofship_client::Command::Web3Rpc {
                             network_id,
                             method,
                             params,
                         },
                     )? {
-                        waku_client::ResponsePayload::Web3Rpc { result } => Ok(result),
+                        proofship_client::ResponsePayload::Web3Rpc { result } => Ok(result),
                         _ => anyhow::bail!("invalid rpc response"),
                     }
                 })
@@ -219,9 +217,9 @@ impl Waku {
         params: &Value,
         cx: &mut Context<Self>,
     ) {
-        let Some(chain_id) = first_object(params).and_then(|object| {
-            object.get("chainId").and_then(parse_hex_u64)
-        }) else {
+        let Some(chain_id) =
+            first_object(params).and_then(|object| object.get("chainId").and_then(parse_hex_u64))
+        else {
             browser.update(cx, |view, _| {
                 view.complete_eth(id, Err((-32602, "missing chainId".into())))
             });
@@ -325,9 +323,9 @@ impl Waku {
             let wallets = match daemon.request(
                 Uuid::nil(),
                 Uuid::nil(),
-                waku_client::Command::Web3Wallets,
+                proofship_client::Command::Web3Wallets,
             ) {
-                Ok(waku_client::ResponsePayload::Web3Wallets { wallets }) => wallets,
+                Ok(proofship_client::ResponsePayload::Web3Wallets { wallets }) => wallets,
                 Ok(_) => return,
                 Err(error) => {
                     let _ = this.update(cx, |this, cx| {
@@ -340,9 +338,9 @@ impl Waku {
             let networks = match daemon.request(
                 Uuid::nil(),
                 Uuid::nil(),
-                waku_client::Command::Web3Networks,
+                proofship_client::Command::Web3Networks,
             ) {
-                Ok(waku_client::ResponsePayload::Web3Networks { networks }) => networks,
+                Ok(proofship_client::ResponsePayload::Web3Networks { networks }) => networks,
                 Ok(_) => return,
                 Err(error) => {
                     let _ = this.update(cx, |this, cx| {
@@ -393,14 +391,14 @@ impl Waku {
                     match daemon.request(
                         Uuid::nil(),
                         Uuid::nil(),
-                        waku_client::Command::Web3SendTx {
+                        proofship_client::Command::Web3SendTx {
                             network_id,
                             wallet_id,
                             to,
                             data,
                         },
                     )? {
-                        waku_client::ResponsePayload::Web3SendTx { tx_hash } => Ok(tx_hash),
+                        proofship_client::ResponsePayload::Web3SendTx { tx_hash } => Ok(tx_hash),
                         _ => anyhow::bail!("invalid send response"),
                     }
                 })
@@ -445,19 +443,16 @@ impl Waku {
         let focus = dialog.focus.clone();
         let wallet_line = format!("{} · {}", dialog.wallet.label, dialog.wallet.address);
         let network_line = format!("{} ({})", dialog.network.name, dialog.network.chain_id);
-        let to_line = dialog
-            .to
-            .clone()
-            .unwrap_or_else(|| tr!("web3.sign_create"));
+        let to_line = dialog.to.clone().unwrap_or_else(|| tr!("web3.sign_create"));
         let data_line = truncate_hex(&dialog.data);
 
         let mut body = div()
             .id("sign-dialog")
             .track_focus(&focus)
             .key_context(DIALOG_CONTEXT)
-            .on_action(cx.listener(|this, _: &DismissSignDialog, _, cx| {
-                this.reject_sign_dialog(cx)
-            }))
+            .on_action(
+                cx.listener(|this, _: &DismissSignDialog, _, cx| this.reject_sign_dialog(cx)),
+            )
             .w(px(440.0))
             .p(px(20.0))
             .rounded(px(16.0))
@@ -476,10 +471,22 @@ impl Waku {
                     .child(tr!("web3.sign_title")),
             )
             .child(hint_line(&theme, tr!("web3.sign_description")))
-            .child(hint_line(&theme, format!("{} · {}", tr!("web3.network"), network_line)))
-            .child(hint_line(&theme, format!("{} · {}", tr!("web3.wallet"), wallet_line)))
-            .child(hint_line(&theme, format!("{} · {}", tr!("web3.sign_to"), to_line)))
-            .child(hint_line(&theme, format!("{} · {}", tr!("web3.sign_data"), data_line)));
+            .child(hint_line(
+                &theme,
+                format!("{} · {}", tr!("web3.network"), network_line),
+            ))
+            .child(hint_line(
+                &theme,
+                format!("{} · {}", tr!("web3.wallet"), wallet_line),
+            ))
+            .child(hint_line(
+                &theme,
+                format!("{} · {}", tr!("web3.sign_to"), to_line),
+            ))
+            .child(hint_line(
+                &theme,
+                format!("{} · {}", tr!("web3.sign_data"), data_line),
+            ));
         if let Some(error) = error {
             body = body.child(
                 div()
@@ -572,10 +579,7 @@ fn parse_hex_u64(value: &Value) -> Option<u64> {
         return Some(number);
     }
     let text = value.as_str()?.trim();
-    if let Some(hex) = text
-        .strip_prefix("0x")
-        .or_else(|| text.strip_prefix("0X"))
-    {
+    if let Some(hex) = text.strip_prefix("0x").or_else(|| text.strip_prefix("0X")) {
         u64::from_str_radix(hex, 16).ok()
     } else {
         text.parse().ok()

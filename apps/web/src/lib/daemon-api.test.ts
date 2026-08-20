@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import type { ComposerDraftChange, DaemonSettings, Project, WakuClient } from '@waku/client'
+import type { ComposerDraftChange, DaemonSettings, Project, WakuClient } from '@proofship/client'
 import {
   applyComposerDraftChanges,
   beginTurn,

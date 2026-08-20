@@ -1,6 +1,6 @@
-# Releasing Waku
+# Releasing ProofShip
 
-Waku auto-updates with [Sparkle](https://sparkle-project.org). Releases live in
+ProofShip auto-updates with [Sparkle](https://sparkle-project.org). Releases live in
 a **Cloudflare R2** bucket served at **`https://releases.waku.sh`**. New users
 download a notarized **`.dmg`**; existing users get smaller in-app updates
 (binary deltas when available) via Sparkle, which reads the appcast at
@@ -14,7 +14,7 @@ bun run release
 ```
 
 - Updater code: [`src/updater.rs`](src/updater.rs) — loads the embedded
-  Sparkle.framework at runtime and starts `SPUUpdater` with Waku's custom user
+  Sparkle.framework at runtime and starts `SPUUpdater` with ProofShip's custom user
   driver. Available updates appear in the sidebar footer; download, signature
   verification, install, and relaunch remain owned by Sparkle. **Check for
   Updates…** lives in the app menu, and the **Automatic updates** toggle in
@@ -48,7 +48,7 @@ The release runs on [Bun](https://bun.sh) and needs
 Updates are signed with an ed25519 key; the private half stays in the login
 keychain and the public half ships in Info.plist as `SUPublicEDKey`.
 
-**This Mac already has the key** — Waku signs with the same default-account
+**This Mac already has the key** — ProofShip signs with the same default-account
 Sparkle key as kero, and the matching public key is already in Info.plist.
 Nothing to do.
 
@@ -66,7 +66,7 @@ build, or download the release from
 > ⚠️ Lose the private key and existing installs can never update again. Keep
 > the backup current.
 
-To split Waku onto its own key later: `generate_keys --account waku`, put the
+To split ProofShip onto its own key later: `generate_keys --account waku`, put the
 new public key in Info.plist, and pass `--account waku` through to
 `generate_appcast` in `scripts/appcast.ts`. Users on old builds only trust the
 old key, so do this on a release that still signs with the old key… in other
@@ -130,7 +130,7 @@ section as release notes, regenerates the signed `appcast.xml`, and uploads
 everything with immutable cache headers (the appcast itself stays
 `max-age=300`). When it finishes:
 
-- **Download link**: `https://releases.waku.sh/Waku-<version>.dmg`
+- **Download link**: `https://releases.waku.sh/ProofShip-<version>.dmg`
 - **In-app updates**: served from the same origin via the appcast.
 
 Test by keeping an older build around, launching it, and choosing
@@ -149,29 +149,29 @@ The Release workflow runs two ways:
 macOS CI runs `bun run release --local`, which signs, notarizes, and writes the
 same artifacts as a local release:
 
-- `Waku-<version>.dmg`
-- `Waku-<version>.zip`
+- `ProofShip-<version>.dmg`
+- `ProofShip-<version>.zip`
 - `appcast.xml` (Sparkle-signed)
 
 Linux CI adds:
 
-- `waku-<version>-x86_64-unknown-linux-gnu.tar.gz`
-- `waku-<version>-aarch64-unknown-linux-gnu.tar.gz`
+- `proofship-<version>-x86_64-unknown-linux-gnu.tar.gz`
+- `proofship-<version>-aarch64-unknown-linux-gnu.tar.gz`
 - `latest-linux.txt` — the version `install.sh` resolves "latest" to
 
 Windows CI adds:
 
-- `Waku-<version>-x86_64-Setup.exe`
-- `Waku-<version>-aarch64-Setup.exe`
-- `waku-<version>-x86_64-pc-windows-msvc.zip` (portable)
-- `waku-<version>-aarch64-pc-windows-msvc.zip` (portable)
+- `ProofShip-<version>-x86_64-Setup.exe`
+- `ProofShip-<version>-aarch64-Setup.exe`
+- `proofship-<version>-x86_64-pc-windows-msvc.zip` (portable)
+- `proofship-<version>-aarch64-pc-windows-msvc.zip` (portable)
 - `appcast-windows-x86_64.xml`, `appcast-windows-aarch64.xml`
 - `latest-windows.txt` — the version the download page resolves "latest" to
 
 [`scripts/bundle-windows.ts`](scripts/bundle-windows.ts) builds both, driving
-[`resources/windows/waku.iss`](resources/windows/waku.iss) through Inno Setup's
+[`resources/windows/proofship.iss`](resources/windows/proofship.iss) through Inno Setup's
 `ISCC`. The installer is **per-user** (`PrivilegesRequired=lowest`,
-`%LOCALAPPDATA%\Programs\Waku`) — no elevation, which is exactly what lets the
+`%LOCALAPPDATA%\Programs\ProofShip`) — no elevation, which is exactly what lets the
 updater re-run it silently. The script signs the two executables and the
 installer with Authenticode when `WINDOWS_CERTIFICATE` and
 `WINDOWS_CERTIFICATE_PASSWORD` are set, and packages them unsigned otherwise,
@@ -187,7 +187,7 @@ Add/Remove Programs.
 Windows has no Sparkle, so [`src/updater.rs`](src/updater.rs) runs the same
 contract itself: fetch the appcast, compare versions, download, verify the
 EdDSA signature, and hand the installer to Inno Setup with `/SILENT`. The
-installer closes Waku, replaces it, and starts it again.
+installer closes ProofShip, replaces it, and starts it again.
 
 - **One feed per architecture.** A Sparkle appcast cannot say which binary an
   item is for, and the client picks its feed at compile time.
@@ -204,7 +204,7 @@ installer closes Waku, replaces it, and starts it again.
 
 Both Linux jobs run on **Ubuntu 22.04**, and that choice is load-bearing: the
 binaries link against the build machine's glibc, so the runner sets the oldest
-distribution Waku can start on (2.35 — Ubuntu 22.04, Debian 12, Fedora 36).
+distribution ProofShip can start on (2.35 — Ubuntu 22.04, Debian 12, Fedora 36).
 Moving those jobs to a newer runner silently drops support for everything
 older.
 
@@ -266,7 +266,7 @@ secrets first:
   at the DMG.
 - **Debug builds never update themselves.** `Updater::init` returns `None`
   under `debug_assertions`, so the dev watcher's app can't offer to replace
-  itself with a production Waku. Set `WAKU_FORCE_UPDATER=1` to exercise the
+  itself with a production ProofShip. Set `WAKU_FORCE_UPDATER=1` to exercise the
   real Sparkle flow from a debug bundle anyway. A bare `cargo run` binary has
   no embedded framework and also degrades to no updater. For UI-only testing,
   start the watcher with `WAKU_PREVIEW_UPDATE=1`; the sidebar immediately
@@ -283,7 +283,7 @@ secrets first:
 - **First-run consent:** Sparkle shows its one-time "check automatically?"
   prompt on the second launch. The Settings → General toggle reads and writes
   the same persisted value.
-- **Waku isn't sandboxed**, so Sparkle's XPC services are unnecessary;
+- **ProofShip isn't sandboxed**, so Sparkle's XPC services are unnecessary;
   `bundle.sh` strips them (plus headers/modules) from the embedded framework
   and re-signs the rest with the app's identity — hardened-runtime library
   validation requires the identities to match.
@@ -291,11 +291,11 @@ secrets first:
   the recent history is staged locally under `dist/updates/` (git-ignored).
 - **Platform artifacts:** keep the bucket layout flat and platform-tagged by
   artifact name/extension — today's macOS names
-  (`Waku-<v>.dmg`, `Waku-<v>.zip`, `appcast.xml`) must keep their URLs.
-  Linux CI releases produce `waku-<v>-<target>.tar.gz` with
-  `scripts/bundle-linux.sh`, Windows CI produces `waku-<v>-<target>.zip` with
+  (`ProofShip-<v>.dmg`, `ProofShip-<v>.zip`, `appcast.xml`) must keep their URLs.
+  Linux CI releases produce `proofship-<v>-<target>.tar.gz` with
+  `scripts/bundle-linux.sh`, Windows CI produces `proofship-<v>-<target>.zip` with
   `scripts/bundle-windows.ts`, and both land in GitHub Releases, then R2 via
-  the sync workflow. Windows also ships `Waku-<v>-<arch>-Setup.exe` and updates
+  the sync workflow. Windows also ships `ProofShip-<v>-<arch>-Setup.exe` and updates
   itself from `appcast-windows-<arch>.xml`. Automatic Linux updates are still
   not wired — re-running `install.sh` is the upgrade path, and
   `latest-linux.txt` is how a client learns what "latest" means.

@@ -1,6 +1,6 @@
-import type { AgentSession, SessionMessageMatch } from '@waku/client'
+import type { AgentSession, SessionMessageMatch } from '@proofship/client'
 import { useEffect, useRef, useState } from 'react'
-import { ProviderIcon, WakuIcon, type WakuIconName } from '@/components/waku-icon'
+import { ProviderIcon, WakuIcon, type WakuIconName } from '@/components/proofship-icon'
 import type { SettingsPageId } from '@/components/settings-view'
 import { SETTINGS_PAGES } from '@/components/settings-view'
 import { displayTitle, searchSessionMessages, type TaskState } from '@/lib/daemon-api'

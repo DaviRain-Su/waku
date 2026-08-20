@@ -103,9 +103,9 @@ impl Waku {
                     match daemon.request(
                         Uuid::nil(),
                         Uuid::nil(),
-                        waku_client::Command::LoadSkills { projects },
+                        proofship_client::Command::LoadSkills { projects },
                     )? {
-                        waku_client::ResponsePayload::SkillsCatalog { catalog } => Ok(catalog),
+                        proofship_client::ResponsePayload::SkillsCatalog { catalog } => Ok(catalog),
                         _ => anyhow::bail!("the daemon returned an invalid skills response"),
                     }
                 })
@@ -206,7 +206,7 @@ impl Waku {
                     daemon.request(
                         Uuid::nil(),
                         Uuid::nil(),
-                        waku_client::Command::SetSkillsEnabled { dirs, enabled },
+                        proofship_client::Command::SetSkillsEnabled { dirs, enabled },
                     )
                 })
                 .await;
@@ -270,7 +270,7 @@ impl Waku {
                     daemon.request(
                         Uuid::nil(),
                         Uuid::nil(),
-                        waku_client::Command::TrashSkills { dirs },
+                        proofship_client::Command::TrashSkills { dirs },
                     )
                 })
                 .await;

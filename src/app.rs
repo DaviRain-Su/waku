@@ -11,12 +11,11 @@ use crossbeam_channel::{Receiver, Sender, unbounded};
 use gpui::{
     Animation, AnimationExt, AnyElement, App, Bounds, ClickEvent, ClipboardEntry, ClipboardItem,
     Context, Div, ElementId, Entity, ExternalPaths, FocusHandle, Focusable, FontWeight, Hsla,
-    IntoElement, KeyDownEvent,
-    ListAlignment, ListOffset, ListState, MouseButton, MouseDownEvent, MouseMoveEvent,
-    MouseUpEvent, NavigationDirection, ObjectFit, PathPromptOptions, Pixels, Render, ScrollHandle,
-    SharedString, Stateful, StyleRefinement, TextRun, WeakEntity, Window, WindowBounds, canvas,
-    div, ease_out_quint, fill, font, img, linear_color_stop, linear_gradient, list, point,
-    prelude::*, pulsating_between, px, rgb,
+    IntoElement, KeyDownEvent, ListAlignment, ListOffset, ListState, MouseButton, MouseDownEvent,
+    MouseMoveEvent, MouseUpEvent, NavigationDirection, ObjectFit, PathPromptOptions, Pixels,
+    Render, ScrollHandle, SharedString, Stateful, StyleRefinement, TextRun, WeakEntity, Window,
+    WindowBounds, canvas, div, ease_out_quint, fill, font, img, linear_color_stop, linear_gradient,
+    list, point, prelude::*, pulsating_between, px, rgb,
 };
 use uuid::Uuid;
 
@@ -563,7 +562,7 @@ struct DriverStartRequest {
     provider: ProviderKind,
     options: DriverStartOptions,
     event_wake: smol::channel::Sender<()>,
-    daemon_client: waku_client::DaemonClient,
+    daemon_client: proofship_client::DaemonClient,
 }
 
 /// A provider process that has started off-thread but is not installed into
@@ -1032,7 +1031,7 @@ pub struct Waku {
     /// Owns the headless provider process for exactly as long as the desktop
     /// app entity. Debug builds can replace it independently after a rebuild;
     /// all live driver handles below are lightweight RPC proxies.
-    daemon: waku_client::DaemonSupervisor,
+    daemon: proofship_client::DaemonSupervisor,
     /// Cached once at construction for the Daemon settings connection URL;
     /// rendering must not query account or network configuration.
     daemon_hostname: String,
@@ -1209,21 +1208,21 @@ pub struct Waku {
     sign_dialog: Option<sign_dialog::SignTxDialogState>,
     /// Preview `window.ethereum` has been granted accounts this session.
     preview_connected: bool,
-    web3_networks: Option<Vec<waku_client::web3::EvmNetwork>>,
-    web3_wallets: Option<Vec<waku_client::web3::WalletAccount>>,
-    web3_okx: Option<waku_client::web3::OkxStatus>,
+    web3_networks: Option<Vec<proofship_client::web3::EvmNetwork>>,
+    web3_wallets: Option<Vec<proofship_client::web3::WalletAccount>>,
+    web3_okx: Option<proofship_client::web3::OkxStatus>,
     web3_generation: u64,
     web3_pending: bool,
     web3_error: Option<String>,
     web3_network_dialog: Option<web3_settings::NetworkDialog>,
     web3_wallet_dialog: Option<web3_settings::WalletDialog>,
     web3_backup_hex: Option<String>,
-    web3_prefs: Option<waku_client::web3::Web3Prefs>,
-    web3_balances: Option<Vec<waku_client::web3::WalletBalanceSnapshot>>,
+    web3_prefs: Option<proofship_client::web3::Web3Prefs>,
+    web3_balances: Option<Vec<proofship_client::web3::WalletBalanceSnapshot>>,
     web3_balances_generation: u64,
     web3_okx_input: Entity<ComposerInput>,
-    mcp_servers: Option<Vec<waku_client::ship::McpServer>>,
-    mcp_tokens: Option<Vec<waku_client::ship::HostingTokenStatus>>,
+    mcp_servers: Option<Vec<proofship_client::ship::McpServer>>,
+    mcp_tokens: Option<Vec<proofship_client::ship::HostingTokenStatus>>,
     mcp_generation: u64,
     mcp_pending: bool,
     mcp_error: Option<String>,
@@ -1232,12 +1231,12 @@ pub struct Waku {
     mcp_cf_input: Entity<ComposerInput>,
     mcp_vercel_input: Entity<ComposerInput>,
     mcp_github_input: Entity<ComposerInput>,
-    pf_status: Option<waku_client::web3::PfToolchainStatus>,
+    pf_status: Option<proofship_client::web3::PfToolchainStatus>,
     pf_generation: u64,
     pf_pending: bool,
     pf_error: Option<String>,
-    preview_detect: Option<waku_client::ship::FrontendDetect>,
-    preview_status: Option<waku_client::ship::PreviewStatus>,
+    preview_detect: Option<proofship_client::ship::FrontendDetect>,
+    preview_status: Option<proofship_client::ship::PreviewStatus>,
     preview_generation: u64,
     pending_preview_url: Option<String>,
     /// Commit-message generation and Git mutation outlive the modal that
@@ -1584,14 +1583,14 @@ mod branches;
 mod command_palette;
 mod commit_dialog;
 mod components;
-mod deploy_dialog;
-mod mcp_settings;
-mod pf_settings;
-mod preview;
 mod composer;
+mod deploy_dialog;
 mod drafts;
 mod file_search;
 mod image_preview;
+mod mcp_settings;
+mod pf_settings;
+mod preview;
 mod render;
 mod right_panel;
 mod runtime;
@@ -1616,11 +1615,11 @@ pub use command_palette::init as init_command_palette;
 pub use commit_dialog::init as init_commit_dialog_keys;
 use components::*;
 pub use deploy_dialog::init as init_deploy_dialog_keys;
-pub use sign_dialog::init as init_sign_dialog_keys;
 pub use image_preview::init as init_image_preview_keys;
 pub use settings::init as init_settings_keys;
 pub use sidebar::init as init_sidebar_keys;
 use sidebar::{SessionDateGroup, SidebarRow};
+pub use sign_dialog::init as init_sign_dialog_keys;
 pub use skills_page::init as init_skills_keys;
 use streaming::*;
 use transcript::*;
@@ -1657,7 +1656,7 @@ pub(super) fn next_time_label_change(sessions: &[AgentSession], now: u64) -> Opt
 
 fn migrate_legacy_projectless_projects(
     state: &mut PersistedState,
-    workspace: &waku_client::WorkspaceClient,
+    workspace: &proofship_client::WorkspaceClient,
 ) -> (bool, Option<anyhow::Error>) {
     let legacy_indices = state
         .projects
@@ -1675,9 +1674,9 @@ fn migrate_legacy_projectless_projects(
     for index in legacy_indices {
         let path = state.projects[index].path.clone();
         let response = workspace
-            .request(waku_client::WorkspaceOperation::MigrateProjectlessWorkspace { path });
+            .request(proofship_client::WorkspaceOperation::MigrateProjectlessWorkspace { path });
         let cwd = match response {
-            Ok(waku_client::WorkspaceResult::ProjectlessWorkspace { cwd }) => cwd,
+            Ok(proofship_client::WorkspaceResult::ProjectlessWorkspace { cwd }) => cwd,
             Ok(_) => {
                 return (
                     changed,
@@ -1898,7 +1897,7 @@ impl Waku {
     pub fn new(
         window: &mut Window,
         cx: &mut App,
-        daemon: waku_client::DaemonSupervisor,
+        daemon: proofship_client::DaemonSupervisor,
     ) -> Entity<Self> {
         let cwd = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
         let store = StateStore::remote(daemon.clone());
@@ -2025,7 +2024,7 @@ impl Waku {
         let sidebar_pane = WakuPane::new(Waku::sidebar_pane_content, cx);
         let transcript_pane = WakuPane::new(Waku::transcript_pane_content, cx);
         let right_panel_pane = WakuPane::new(Waku::right_panel_pane_content, cx);
-        let workspace_client = waku_client::WorkspaceClient::new(daemon.client());
+        let workspace_client = proofship_client::WorkspaceClient::new(daemon.client());
         let (projectless_migrated, projectless_migration_error) =
             migrate_legacy_projectless_projects(&mut state, &workspace_client);
         let projectless_save_error = projectless_migrated
@@ -2191,11 +2190,11 @@ impl Waku {
                     let result = match daemon.request(
                         Uuid::nil(),
                         Uuid::nil(),
-                        waku_client::Command::ProbeComputerPermissions { prompt: false },
+                        proofship_client::Command::ProbeComputerPermissions { prompt: false },
                     ) {
-                        Ok(waku_client::ResponsePayload::ComputerPermissions { permissions }) => {
-                            Ok(permissions)
-                        }
+                        Ok(proofship_client::ResponsePayload::ComputerPermissions {
+                            permissions,
+                        }) => Ok(permissions),
                         Ok(_) => Err("the daemon returned an invalid permission response".into()),
                         Err(error) => Err(error.to_string()),
                     };

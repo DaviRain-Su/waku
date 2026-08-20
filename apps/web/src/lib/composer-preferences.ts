@@ -1,4 +1,4 @@
-import type { AgentSession, ProviderKind } from '@waku/client'
+import type { AgentSession, ProviderKind } from '@proofship/client'
 
 const STORAGE_KEY = 'waku.composer-preferences.v1'
 

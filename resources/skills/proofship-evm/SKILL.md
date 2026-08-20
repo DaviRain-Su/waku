@@ -1,13 +1,13 @@
 ---
 name: proofship-evm
 description: >-
-  Waku multi-EVM deploy guidance with X Layer first. Use when resolving
+  ProofShip multi-EVM deploy guidance with X Layer first. Use when resolving
   chain metadata, RPC/explorer URLs, or casting
-  deploy/interact against Waku networks. Prefer xlayer-testnet (1952)
+  deploy/interact against ProofShip networks. Prefer xlayer-testnet (1952)
   unless the user names another chain.
 ---
 
-# Waku EVM (X Layer first)
+# ProofShip EVM (X Layer first)
 
 **Product focus right now: OKX X Layer only** (testnet 1952 default, mainnet 196
 for funded ops). Sepolia/Base Sepolia remain as Settings builtins for power users.
@@ -44,7 +44,7 @@ are blocked for **DevEnvKey** signing; use a Local signer for those.
 When the user configured an OnchainOS API key (Settings → Networks), sessions
 may carry the hosted `okx-onchainos` MCP server. Prefer its tools for DEX work
 instead of hand-rolling calldata. These tools **construct** transactions only —
-signing and sending stays in Waku (Settings → Wallets / Deploy). Never ask the
+signing and sending stays in ProofShip (Settings → Wallets / Deploy). Never ask the
 user to paste a private key to "complete" a swap.
 
 ## Deploy discipline
@@ -53,7 +53,7 @@ user to paste a private key to "complete" a swap.
 - Keys: Local signer (Create / Import) or env var name for DevEnvKey
 - Local keys live under the daemon `web3/wallet-secrets/` directory (mode 0600)
 - Never paste private keys into chat
-- After `pf_build`, tell the user to use Waku's session Deploy button
+- After `pf_build`, tell the user to use ProofShip's session Deploy button
 
 ## Anti-patterns
 

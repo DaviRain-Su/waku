@@ -1,6 +1,6 @@
 import { useQueries, useQuery } from '@tanstack/react-query'
-import type { ProviderKind } from '@waku/client'
-import { PROVIDERS } from '@/components/waku-icon'
+import type { ProviderKind } from '@proofship/client'
+import { PROVIDERS } from '@/components/proofship-icon'
 import { useDaemon } from '@/lib/daemon-context'
 import {
   daemonKeys,

@@ -2047,22 +2047,34 @@ fn the_rail_draws_only_installed_providers_the_settings_left_on() {
 
 #[test]
 fn ship_contract_empty_state_points_at_install_or_gate() {
-    assert!(super::deploy_dialog::contract_needs_pf_install(Some("missing")));
-    assert!(super::deploy_dialog::contract_needs_pf_install(Some("installing")));
-    assert!(!super::deploy_dialog::contract_needs_pf_install(Some("ready")));
+    assert!(super::deploy_dialog::contract_needs_pf_install(Some(
+        "missing"
+    )));
+    assert!(super::deploy_dialog::contract_needs_pf_install(Some(
+        "installing"
+    )));
+    assert!(!super::deploy_dialog::contract_needs_pf_install(Some(
+        "ready"
+    )));
     assert!(!super::deploy_dialog::contract_needs_pf_install(None));
 }
 
 #[test]
 fn ship_faucet_is_xlayer_testnet_only() {
-    assert!(waku_client::web3::faucet_url("xlayer-testnet").is_some());
-    assert!(waku_client::web3::faucet_url("anvil").is_none());
+    assert!(proofship_client::web3::faucet_url("xlayer-testnet").is_some());
+    assert!(proofship_client::web3::faucet_url("anvil").is_none());
 }
 
 #[test]
 fn format_wei_shows_dust_instead_of_zero() {
-    assert_eq!(waku_client::web3::format_wei("0"), "0");
-    assert_eq!(waku_client::web3::format_wei("1000000000000000000"), "1");
-    assert_eq!(waku_client::web3::format_wei("1500000000000000000"), "1.5");
-    assert_eq!(waku_client::web3::format_wei("1"), "0.000000");
+    assert_eq!(proofship_client::web3::format_wei("0"), "0");
+    assert_eq!(
+        proofship_client::web3::format_wei("1000000000000000000"),
+        "1"
+    );
+    assert_eq!(
+        proofship_client::web3::format_wei("1500000000000000000"),
+        "1.5"
+    );
+    assert_eq!(proofship_client::web3::format_wei("1"), "0.000000");
 }

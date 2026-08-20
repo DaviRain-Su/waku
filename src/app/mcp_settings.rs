@@ -1,7 +1,7 @@
 //! Settings → MCP. Daemon owns the catalog and CLI tokens; frames read cache.
 
 use super::*;
-use waku_client::ship::{HostingProvider, HostingTokenStatus, McpServer, McpTransport};
+use proofship_client::ship::{HostingProvider, HostingTokenStatus, McpServer, McpTransport};
 
 pub(super) struct McpDialog {
     name: Entity<ComposerInput>,
@@ -67,16 +67,14 @@ impl Waku {
         } else {
             column = column.child(mcp_hint(&theme, tr!("mcp.loading")));
         }
-        column = column.child(
-            div().flex().flex_wrap().gap(px(8.0)).children([
-                mcp_button(&theme, "mcp-add-http", tr!("mcp.add_http")).on_click(cx.listener(
-                    |this, _, window, cx| this.open_mcp_dialog(McpTransport::Http, window, cx),
-                )),
-                mcp_button(&theme, "mcp-add-stdio", tr!("mcp.add_stdio")).on_click(cx.listener(
-                    |this, _, window, cx| this.open_mcp_dialog(McpTransport::Stdio, window, cx),
-                )),
-            ]),
-        );
+        column = column.child(div().flex().flex_wrap().gap(px(8.0)).children([
+            mcp_button(&theme, "mcp-add-http", tr!("mcp.add_http")).on_click(cx.listener(
+                |this, _, window, cx| this.open_mcp_dialog(McpTransport::Http, window, cx),
+            )),
+            mcp_button(&theme, "mcp-add-stdio", tr!("mcp.add_stdio")).on_click(cx.listener(
+                |this, _, window, cx| this.open_mcp_dialog(McpTransport::Stdio, window, cx),
+            )),
+        ]));
         if let Some(dialog) = &self.mcp_dialog {
             column = column.child(self.render_mcp_dialog(dialog, &theme, cx));
         }
@@ -131,11 +129,9 @@ impl Waku {
                     .items_center()
                     .gap(px(8.0))
                     .child(TextField::new(field_id, input).flex_1().max_w(px(360.0)))
-                    .child(
-                        mcp_button(theme, save_id, tr!("mcp.save_token")).on_click(cx.listener(
-                            move |this, _, _, cx| this.save_hosting_token(provider, cx),
-                        )),
-                    ),
+                    .child(mcp_button(theme, save_id, tr!("mcp.save_token")).on_click(
+                        cx.listener(move |this, _, _, cx| this.save_hosting_token(provider, cx)),
+                    )),
             )
             .child(
                 div()
@@ -192,73 +188,68 @@ impl Waku {
             _ if builtin => tr!("mcp.builtin"),
             _ => tr!("mcp.custom"),
         };
-        mcp_card(theme)
-            .child(
-                div()
-                    .flex()
-                    .items_center()
-                    .justify_between()
-                    .gap(px(12.0))
-                    .child(
-                        div()
-                            .min_w_0()
-                            .flex()
-                            .flex_col()
-                            .gap(px(2.0))
-                            .child(mcp_title(theme, server.name.clone()))
-                            .child(mcp_hint(
-                        theme,
-                        format!("{} · {} · {}", source, mcp_auth_label(server), detail),
-                    )),
-                    )
-                    .child(
-                        div()
-                            .flex()
-                            .items_center()
-                            .gap(px(8.0))
-                            .when(!web3_attached && server.auth == "needed", |row| {
-                                let id = server.id.clone();
-                                row.child(
-                                    mcp_button(theme, ("mcp-authorize", index), tr!("mcp.authorize"))
-                                        .on_click(cx.listener(move |this, _, _, cx| {
-                                            this.authorize_mcp_server(&id, cx)
-                                        })),
-                                )
-                            })
-                            .when(!web3_attached && server.auth == "authorized", |row| {
-                                let id = server.id.clone();
-                                row.child(
-                                    mcp_button(
-                                        theme,
-                                        ("mcp-disconnect", index),
-                                        tr!("mcp.disconnect"),
-                                    )
+        mcp_card(theme).child(
+            div()
+                .flex()
+                .items_center()
+                .justify_between()
+                .gap(px(12.0))
+                .child(
+                    div()
+                        .min_w_0()
+                        .flex()
+                        .flex_col()
+                        .gap(px(2.0))
+                        .child(mcp_title(theme, server.name.clone()))
+                        .child(mcp_hint(
+                            theme,
+                            format!("{} · {} · {}", source, mcp_auth_label(server), detail),
+                        )),
+                )
+                .child(
+                    div()
+                        .flex()
+                        .items_center()
+                        .gap(px(8.0))
+                        .when(!web3_attached && server.auth == "needed", |row| {
+                            let id = server.id.clone();
+                            row.child(
+                                mcp_button(theme, ("mcp-authorize", index), tr!("mcp.authorize"))
+                                    .on_click(cx.listener(move |this, _, _, cx| {
+                                        this.authorize_mcp_server(&id, cx)
+                                    })),
+                            )
+                        })
+                        .when(!web3_attached && server.auth == "authorized", |row| {
+                            let id = server.id.clone();
+                            row.child(
+                                mcp_button(theme, ("mcp-disconnect", index), tr!("mcp.disconnect"))
                                     .on_click(cx.listener(move |this, _, _, cx| {
                                         this.disconnect_mcp_server(&id, cx)
                                     })),
-                                )
-                            })
-                            .when(!builtin && !web3_attached, |row| {
-                                row.child(
-                                    mcp_button(theme, ("mcp-remove", index), tr!("mcp.remove"))
-                                        .on_click(cx.listener(move |this, _, _, cx| {
-                                            this.remove_mcp_server(&id, cx)
-                                        })),
-                                )
-                            })
-                            .when(!web3_attached, |row| {
-                                row.child(render_mcp_toggle(
-                                    theme,
-                                    ("mcp-enabled", index),
-                                    enabled,
-                                    cx.listener({
-                                        let id = server.id.clone();
-                                        move |this, _, _, cx| this.set_mcp_enabled(&id, !enabled, cx)
-                                    }),
-                                ))
-                            }),
-                    ),
-            )
+                            )
+                        })
+                        .when(!builtin && !web3_attached, |row| {
+                            row.child(
+                                mcp_button(theme, ("mcp-remove", index), tr!("mcp.remove"))
+                                    .on_click(cx.listener(move |this, _, _, cx| {
+                                        this.remove_mcp_server(&id, cx)
+                                    })),
+                            )
+                        })
+                        .when(!web3_attached, |row| {
+                            row.child(render_mcp_toggle(
+                                theme,
+                                ("mcp-enabled", index),
+                                enabled,
+                                cx.listener({
+                                    let id = server.id.clone();
+                                    move |this, _, _, cx| this.set_mcp_enabled(&id, !enabled, cx)
+                                }),
+                            ))
+                        }),
+                ),
+        )
     }
 
     fn render_mcp_dialog(&self, dialog: &McpDialog, theme: &Theme, cx: &mut Context<Self>) -> Div {
@@ -312,9 +303,8 @@ impl Waku {
                         ),
                     )
                     .child(
-                        mcp_button(theme, "mcp-dialog-save", tr!("mcp.add")).on_click(
-                            cx.listener(|this, _, _, cx| this.submit_mcp_dialog(cx)),
-                        ),
+                        mcp_button(theme, "mcp-dialog-save", tr!("mcp.add"))
+                            .on_click(cx.listener(|this, _, _, cx| this.submit_mcp_dialog(cx))),
                     ),
             )
     }
@@ -394,9 +384,9 @@ impl Waku {
             },
         };
         self.mutate_mcp(
-            waku_client::Command::McpUpsert { server },
+            proofship_client::Command::McpUpsert { server },
             |this, payload| {
-                if let waku_client::ResponsePayload::McpList { servers } = payload {
+                if let proofship_client::ResponsePayload::McpList { servers } = payload {
                     this.mcp_servers = Some(servers);
                 }
             },
@@ -409,9 +399,9 @@ impl Waku {
             .child(mcp_title(theme, tr!("mcp.github_token_title")))
             .child(mcp_hint(theme, tr!("mcp.github_token_hint")))
             .child(
-                div()
-                    .mt(px(8.0))
-                    .child(TextField::new("mcp-github-token", self.mcp_github_input.clone()).w_full()),
+                div().mt(px(8.0)).child(
+                    TextField::new("mcp-github-token", self.mcp_github_input.clone()).w_full(),
+                ),
             )
             .child(
                 div()
@@ -420,12 +410,11 @@ impl Waku {
                     .justify_end()
                     .gap(px(8.0))
                     .child(
-                        mcp_button(theme, "mcp-github-token-cancel", tr!("common.cancel")).on_click(
-                            cx.listener(|this, _, _, cx| {
+                        mcp_button(theme, "mcp-github-token-cancel", tr!("common.cancel"))
+                            .on_click(cx.listener(|this, _, _, cx| {
                                 this.mcp_github_token_for = None;
                                 cx.notify();
-                            }),
-                        ),
+                            })),
                     )
                     .child(
                         mcp_button(theme, "mcp-github-token-save", tr!("mcp.github_token_save"))
@@ -457,7 +446,7 @@ impl Waku {
                     daemon.request(
                         Uuid::nil(),
                         Uuid::nil(),
-                        waku_client::Command::McpAuthorize {
+                        proofship_client::Command::McpAuthorize {
                             id,
                             token: Some(token),
                         },
@@ -470,7 +459,7 @@ impl Waku {
                 }
                 this.mcp_pending = false;
                 match result {
-                    Ok(waku_client::ResponsePayload::McpAuthorize { servers, .. }) => {
+                    Ok(proofship_client::ResponsePayload::McpAuthorize { servers, .. }) => {
                         this.mcp_servers = Some(servers);
                         this.mcp_github_token_for = None;
                         this.mcp_error = None;
@@ -501,7 +490,7 @@ impl Waku {
                         daemon.request(
                             Uuid::nil(),
                             Uuid::nil(),
-                            waku_client::Command::McpAuthorize { id, token: None },
+                            proofship_client::Command::McpAuthorize { id, token: None },
                         )
                     }
                 })
@@ -512,7 +501,7 @@ impl Waku {
                 }
                 this.mcp_pending = false;
                 match result {
-                    Ok(waku_client::ResponsePayload::McpAuthorize { url, servers }) => {
+                    Ok(proofship_client::ResponsePayload::McpAuthorize { url, servers }) => {
                         this.mcp_servers = Some(servers.clone());
                         this.mcp_error = None;
                         let authorized = servers
@@ -584,9 +573,9 @@ impl Waku {
 
     fn disconnect_mcp_server(&mut self, id: &str, cx: &mut Context<Self>) {
         self.mutate_mcp(
-            waku_client::Command::McpDisconnect { id: id.to_string() },
+            proofship_client::Command::McpDisconnect { id: id.to_string() },
             |this, payload| {
-                if let waku_client::ResponsePayload::McpList { servers } = payload {
+                if let proofship_client::ResponsePayload::McpList { servers } = payload {
                     this.mcp_servers = Some(servers);
                 }
             },
@@ -596,12 +585,12 @@ impl Waku {
 
     fn set_mcp_enabled(&mut self, id: &str, enabled: bool, cx: &mut Context<Self>) {
         self.mutate_mcp(
-            waku_client::Command::McpSetEnabled {
+            proofship_client::Command::McpSetEnabled {
                 id: id.to_string(),
                 enabled,
             },
             |this, payload| {
-                if let waku_client::ResponsePayload::McpList { servers } = payload {
+                if let proofship_client::ResponsePayload::McpList { servers } = payload {
                     this.mcp_servers = Some(servers);
                 }
             },
@@ -611,9 +600,9 @@ impl Waku {
 
     fn remove_mcp_server(&mut self, id: &str, cx: &mut Context<Self>) {
         self.mutate_mcp(
-            waku_client::Command::McpRemove { id: id.to_string() },
+            proofship_client::Command::McpRemove { id: id.to_string() },
             |this, payload| {
-                if let waku_client::ResponsePayload::McpList { servers } = payload {
+                if let proofship_client::ResponsePayload::McpList { servers } = payload {
                     this.mcp_servers = Some(servers);
                 }
             },
@@ -632,13 +621,13 @@ impl Waku {
         };
         input.update(cx, |input, cx| input.set_content(String::new(), cx));
         self.mutate_mcp(
-            waku_client::Command::HostingSetToken {
+            proofship_client::Command::HostingSetToken {
                 provider,
                 api_token: Some(token),
                 enabled: None,
             },
             |this, payload| {
-                if let waku_client::ResponsePayload::HostingTokens { tokens } = payload {
+                if let proofship_client::ResponsePayload::HostingTokens { tokens } = payload {
                     this.mcp_tokens = Some(tokens);
                 }
             },
@@ -653,13 +642,13 @@ impl Waku {
         cx: &mut Context<Self>,
     ) {
         self.mutate_mcp(
-            waku_client::Command::HostingSetToken {
+            proofship_client::Command::HostingSetToken {
                 provider,
                 api_token: None,
                 enabled: Some(enabled),
             },
             |this, payload| {
-                if let waku_client::ResponsePayload::HostingTokens { tokens } = payload {
+                if let proofship_client::ResponsePayload::HostingTokens { tokens } = payload {
                     this.mcp_tokens = Some(tokens);
                 }
             },
@@ -669,8 +658,8 @@ impl Waku {
 
     fn mutate_mcp(
         &mut self,
-        command: waku_client::Command,
-        apply: impl FnOnce(&mut Self, waku_client::ResponsePayload) + Send + 'static,
+        command: proofship_client::Command,
+        apply: impl FnOnce(&mut Self, proofship_client::ResponsePayload) + Send + 'static,
         cx: &mut Context<Self>,
     ) {
         self.mcp_pending = true;
@@ -715,17 +704,21 @@ fn mcp_auth_label(server: &McpServer) -> String {
 }
 
 fn load_mcp_snapshot(
-    daemon: &waku_client::DaemonClient,
+    daemon: &proofship_client::DaemonClient,
 ) -> anyhow::Result<(Vec<McpServer>, Vec<HostingTokenStatus>)> {
-    let servers = match daemon.request(Uuid::nil(), Uuid::nil(), waku_client::Command::McpList)? {
-        waku_client::ResponsePayload::McpList { servers } => servers,
-        _ => anyhow::bail!("invalid mcp list response"),
-    };
-    let tokens =
-        match daemon.request(Uuid::nil(), Uuid::nil(), waku_client::Command::HostingTokens)? {
-            waku_client::ResponsePayload::HostingTokens { tokens } => tokens,
-            _ => anyhow::bail!("invalid hosting tokens response"),
+    let servers =
+        match daemon.request(Uuid::nil(), Uuid::nil(), proofship_client::Command::McpList)? {
+            proofship_client::ResponsePayload::McpList { servers } => servers,
+            _ => anyhow::bail!("invalid mcp list response"),
         };
+    let tokens = match daemon.request(
+        Uuid::nil(),
+        Uuid::nil(),
+        proofship_client::Command::HostingTokens,
+    )? {
+        proofship_client::ResponsePayload::HostingTokens { tokens } => tokens,
+        _ => anyhow::bail!("invalid hosting tokens response"),
+    };
     Ok((servers, tokens))
 }
 
@@ -810,16 +803,10 @@ fn render_mcp_toggle(
         .flex()
         .items_center()
         .when(enabled, |element| element.justify_end())
-        .child(
-            div()
-                .w(px(14.0))
-                .h(px(14.0))
-                .rounded_full()
-                .bg(if enabled {
-                    theme.on_inverse
-                } else {
-                    theme.text_tertiary
-                }),
-        )
+        .child(div().w(px(14.0)).h(px(14.0)).rounded_full().bg(if enabled {
+            theme.on_inverse
+        } else {
+            theme.text_tertiary
+        }))
         .on_click(on_click)
 }

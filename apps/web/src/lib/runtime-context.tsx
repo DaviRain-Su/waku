@@ -8,7 +8,7 @@ import type {
   ProviderProbe,
   SequencedEvent,
   UserInputAnswer,
-} from '@waku/client'
+} from '@proofship/client'
 import {
   createContext,
   useCallback,

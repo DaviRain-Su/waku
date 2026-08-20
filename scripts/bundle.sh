@@ -61,19 +61,19 @@ fi
 debug_adhoc_requirement="=designated => identifier \"$bundle_identifier\""
 if [ "${WAKU_SKIP_CARGO_BUILD:-0}" != "1" ]; then
   if [ "$profile" = "release" ]; then
-    cargo build --release --package waku --bin waku --bin waku_js_repl --package waku-daemon --bin waku-daemon --package waku-pf-mcp --bin waku-pf-mcp
+    cargo build --release --package proofship --bin proofship --bin proofship_js_repl --package proofship-daemon --bin proofship-daemon --package proofship-pf-mcp --bin proofship-pf-mcp
   else
-    cargo build --package waku --bin waku --bin waku_js_repl --package waku-pf-mcp --bin waku-pf-mcp
+    cargo build --package proofship --bin proofship --bin proofship_js_repl --package proofship-pf-mcp --bin proofship-pf-mcp
   fi
 fi
 
 bundle="$cargo_target_dir/$profile/$app_name.app"
 contents="$bundle/Contents"
 helper_bundle="$contents/Helpers/$helper_name.app"
-repl_executable="$contents/Resources/waku_js_repl"
-daemon_executable="$contents/MacOS/waku-daemon"
+repl_executable="$contents/Resources/proofship_js_repl"
+daemon_executable="$contents/MacOS/proofship-daemon"
 swift_module_cache="$cargo_target_dir/$profile/swift-module-cache"
-helper_source="resources/computer-use/WakuComputerUse.swift"
+helper_source="resources/computer-use/ProofShipComputerUse.swift"
 menu_bar_cursor_resource="resources/computer-use/menubar-cursor.png"
 overlay_cursor_resource="resources/computer-use/overlay-cursor.svg"
 helper_fingerprint="$({
@@ -152,13 +152,13 @@ fi
 
 rm -rf "$bundle"
 mkdir -p "$contents/MacOS" "$contents/Resources/computer-use" "$contents/Resources/skills/waku-computer-use" "$contents/Helpers"
-cp "$cargo_target_dir/$profile/waku" "$contents/MacOS/$app_name"
-cp "$cargo_target_dir/$profile/waku_js_repl" "$repl_executable"
+cp "$cargo_target_dir/$profile/proofship" "$contents/MacOS/$app_name"
+cp "$cargo_target_dir/$profile/proofship_js_repl" "$repl_executable"
 chmod 755 "$repl_executable"
-cp "$cargo_target_dir/$profile/waku-pf-mcp" "$contents/MacOS/waku-pf-mcp"
-chmod 755 "$contents/MacOS/waku-pf-mcp"
+cp "$cargo_target_dir/$profile/proofship-pf-mcp" "$contents/MacOS/proofship-pf-mcp"
+chmod 755 "$contents/MacOS/proofship-pf-mcp"
 if [ "$profile" = "release" ]; then
-  cp "$cargo_target_dir/$profile/waku-daemon" "$daemon_executable"
+  cp "$cargo_target_dir/$profile/proofship-daemon" "$daemon_executable"
   chmod 755 "$daemon_executable"
 fi
 cp resources/Info.plist "$contents/Info.plist"

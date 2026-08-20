@@ -1,6 +1,6 @@
 use gpui::{App, Global, Hsla, Window, WindowAppearance, hsla, rgb, transparent_black};
 
-pub use waku_client::theme::ThemePreference;
+pub use proofship_client::theme::ThemePreference;
 
 fn resolves_to_dark(preference: ThemePreference, system_appearance: WindowAppearance) -> bool {
     match preference {

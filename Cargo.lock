@@ -7116,6 +7116,153 @@ dependencies = [
 ]
 
 [[package]]
+name = "proofship"
+version = "0.1.9"
+dependencies = [
+ "alacritty_terminal",
+ "anyhow",
+ "base64 0.22.1",
+ "block2 0.6.2",
+ "chrono",
+ "crossbeam-channel",
+ "dirs",
+ "ed25519-dalek",
+ "embed-resource",
+ "futures",
+ "futures-lite",
+ "gpui",
+ "gpui_platform",
+ "image",
+ "libc",
+ "nucleo-matcher",
+ "objc2 0.6.4",
+ "objc2-app-kit 0.3.2",
+ "objc2-core-graphics",
+ "objc2-foundation 0.3.2",
+ "objc2-quartz-core 0.3.2",
+ "objc2-user-notifications",
+ "objc2-web-kit",
+ "parking_lot",
+ "proofship-client",
+ "proofship-protocol",
+ "pulldown-cmark",
+ "raw-window-handle",
+ "regex",
+ "ropey",
+ "rquickjs",
+ "rust-i18n",
+ "rust-umami",
+ "serde",
+ "serde_json",
+ "smol",
+ "tokio",
+ "unicode-segmentation",
+ "url",
+ "uuid",
+ "webview2-com",
+ "windows 0.61.3",
+ "windows-core 0.61.2",
+ "windows-sys 0.61.2",
+ "wry",
+]
+
+[[package]]
+name = "proofship-client"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "crossbeam-channel",
+ "dirs",
+ "libc",
+ "nucleo-matcher",
+ "parking_lot",
+ "proofship-protocol",
+ "serde",
+ "serde_json",
+ "smol",
+ "tungstenite",
+ "url",
+ "uuid",
+]
+
+[[package]]
+name = "proofship-core"
+version = "0.1.0"
+dependencies = [
+ "agent-client-protocol",
+ "alacritty_terminal",
+ "alloy",
+ "anyhow",
+ "base64 0.22.1",
+ "chrono",
+ "crossbeam-channel",
+ "dirs",
+ "libc",
+ "nucleo-matcher",
+ "objc2-foundation 0.3.2",
+ "parking_lot",
+ "proofship-client",
+ "proofship-protocol",
+ "reqwest 0.12.28",
+ "rusqlite",
+ "rust-i18n",
+ "serde",
+ "serde_json",
+ "sha2",
+ "smol",
+ "subtle",
+ "tempfile",
+ "tokio",
+ "toml 0.8.23",
+ "trash",
+ "tungstenite",
+ "url",
+ "uuid",
+]
+
+[[package]]
+name = "proofship-daemon"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "libc",
+ "proofship-core",
+ "proofship-protocol",
+ "serde_json",
+ "windows-sys 0.61.2",
+]
+
+[[package]]
+name = "proofship-pf-mcp"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "rmcp",
+ "schemars 1.2.2",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "tokio",
+]
+
+[[package]]
+name = "proofship-protocol"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "base64 0.22.1",
+ "chrono",
+ "dirs",
+ "objc2-foundation 0.3.2",
+ "rust-i18n",
+ "serde",
+ "serde_json",
+ "similar",
+ "ts-rs",
+ "uuid",
+]
+
+[[package]]
 name = "proptest"
 version = "1.10.0"
 source = "git+https://github.com/proptest-rs/proptest?rev=3dca198a8fef1b32e3a66f1e1897c955b4dc5b5b#3dca198a8fef1b32e3a66f1e1897c955b4dc5b5b"
@@ -10248,153 +10395,6 @@ name = "waker-fn"
 version = "1.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "317211a0dc0ceedd78fb2ca9a44aed3d7b9b26f81870d485c07122b4350673b7"
-
-[[package]]
-name = "waku"
-version = "0.1.9"
-dependencies = [
- "alacritty_terminal",
- "anyhow",
- "base64 0.22.1",
- "block2 0.6.2",
- "chrono",
- "crossbeam-channel",
- "dirs",
- "ed25519-dalek",
- "embed-resource",
- "futures",
- "futures-lite",
- "gpui",
- "gpui_platform",
- "image",
- "libc",
- "nucleo-matcher",
- "objc2 0.6.4",
- "objc2-app-kit 0.3.2",
- "objc2-core-graphics",
- "objc2-foundation 0.3.2",
- "objc2-quartz-core 0.3.2",
- "objc2-user-notifications",
- "objc2-web-kit",
- "parking_lot",
- "pulldown-cmark",
- "raw-window-handle",
- "regex",
- "ropey",
- "rquickjs",
- "rust-i18n",
- "rust-umami",
- "serde",
- "serde_json",
- "smol",
- "tokio",
- "unicode-segmentation",
- "url",
- "uuid",
- "waku-client",
- "waku-protocol",
- "webview2-com",
- "windows 0.61.3",
- "windows-core 0.61.2",
- "windows-sys 0.61.2",
- "wry",
-]
-
-[[package]]
-name = "waku-client"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "crossbeam-channel",
- "dirs",
- "libc",
- "nucleo-matcher",
- "parking_lot",
- "serde",
- "serde_json",
- "smol",
- "tungstenite",
- "url",
- "uuid",
- "waku-protocol",
-]
-
-[[package]]
-name = "waku-core"
-version = "0.1.0"
-dependencies = [
- "agent-client-protocol",
- "alacritty_terminal",
- "alloy",
- "anyhow",
- "base64 0.22.1",
- "chrono",
- "crossbeam-channel",
- "dirs",
- "libc",
- "nucleo-matcher",
- "objc2-foundation 0.3.2",
- "parking_lot",
- "reqwest 0.12.28",
- "rusqlite",
- "rust-i18n",
- "serde",
- "serde_json",
- "sha2",
- "smol",
- "subtle",
- "tempfile",
- "tokio",
- "toml 0.8.23",
- "trash",
- "tungstenite",
- "url",
- "uuid",
- "waku-client",
- "waku-protocol",
-]
-
-[[package]]
-name = "waku-daemon"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "libc",
- "serde_json",
- "waku-core",
- "waku-protocol",
- "windows-sys 0.61.2",
-]
-
-[[package]]
-name = "waku-pf-mcp"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "rmcp",
- "schemars 1.2.2",
- "serde",
- "serde_json",
- "tempfile",
- "tokio",
-]
-
-[[package]]
-name = "waku-protocol"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "base64 0.22.1",
- "chrono",
- "dirs",
- "objc2-foundation 0.3.2",
- "rust-i18n",
- "serde",
- "serde_json",
- "similar",
- "ts-rs",
- "uuid",
-]
 
 [[package]]
 name = "walkdir"

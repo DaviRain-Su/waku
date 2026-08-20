@@ -7,7 +7,7 @@ import type {
   SequencedEvent,
   TranscriptBlock,
   TurnStatus,
-} from '@waku/client'
+} from '@proofship/client'
 
 export interface PendingPermission {
   requestId: string

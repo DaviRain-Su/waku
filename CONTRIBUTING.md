@@ -1,6 +1,6 @@
-# Contributing to Waku
+# Contributing to ProofShip
 
-Thanks for helping improve Waku. Bug reports, focused fixes, tests, and
+Thanks for helping improve ProofShip. Bug reports, focused fixes, tests, and
 well-scoped features are welcome.
 
 ## Development setup
@@ -32,9 +32,9 @@ bun install
 bun run dev
 ```
 
-On macOS the watcher builds and signs `target/debug/Waku Debug.app`; on Linux
+On macOS the watcher builds and signs `target/debug/ProofShip Debug.app`; on Linux
 and Windows it builds `target/debug/waku`. In both cases the provider daemon remains an
-external `target/debug/waku-debug-daemon`: provider-only edits rebuild and
+external `target/debug/proofship-debug-daemon`: provider-only edits rebuild and
 hot-swap that process without relaunching the app, while desktop edits rebuild
 and relaunch the app normally. Keep that watcher running while you work. Do
 not start a second watcher or manually relaunch the debug app. Press `Ctrl-C`,
@@ -67,7 +67,7 @@ users run to install that archive. Point it at a local build to exercise it
 without publishing:
 
 ```sh
-WAKU_BUNDLE_PATH=target/release/waku-<version>-<target>.tar.gz \
+WAKU_BUNDLE_PATH=target/release/proofship-<version>-<target>.tar.gz \
   sh website/public/install.sh
 ```
 
@@ -82,9 +82,9 @@ bun scripts/bundle-windows.ts
 ```
 
 Both land under `target/release`. The zip holds the two executables side by
-side beneath one versioned directory — the layout Waku needs to find its
+side beneath one versioned directory — the layout ProofShip needs to find its
 daemon — and the installer is built from
-[`resources/windows/waku.iss`](resources/windows/waku.iss), so Inno Setup 6.3
+[`resources/windows/proofship.iss`](resources/windows/proofship.iss), so Inno Setup 6.3
 or newer must be installed (`choco install innosetup`) — the architecture
 gate uses identifiers added in 6.3. Set `WINDOWS_CERTIFICATE`
 (base64 `.pfx`) and `WINDOWS_CERTIFICATE_PASSWORD` to Authenticode-sign them;
@@ -113,16 +113,16 @@ Run the focused checks relevant to your change, then run the full baseline
 before opening a pull request:
 
 ```sh
-cargo fmt --package waku --package waku-protocol --package waku-client --package waku-core --package waku-daemon -- --check
+cargo fmt --package proofship --package proofship-protocol --package proofship-client --package proofship-core --package proofship-daemon -- --check
 cargo check
 cargo test
 bun run protocol:check
-bun run --filter @waku/client check
-bun run --filter @waku/client test
+bun run --filter @proofship/client check
+bun run --filter @proofship/client test
 ```
 
 When a Rust wire type changes, run `bun run protocol:generate` and commit the
-updated files under `packages/waku-client/src/generated`.
+updated files under `packages/proofship-client/src/generated`.
 
 For user-visible changes, wait for the watcher to report a successful rebuild
 and validate the freshly relaunched app. Include screenshots or a short

@@ -3,7 +3,7 @@ import type {
   DaemonSettings,
   Project,
   ProviderKind,
-} from '@waku/client'
+} from '@proofship/client'
 import { useEffect, useState, type ReactNode } from 'react'
 import { toast } from 'sonner'
 import { ControlMenu } from '@/components/control-menu'
@@ -11,7 +11,7 @@ import { SkillsSettings } from '@/components/skills-settings'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { UsageSettings } from '@/components/usage-settings'
-import { ProviderIcon, PROVIDERS, WakuIcon, type WakuIconName } from '@/components/waku-icon'
+import { ProviderIcon, PROVIDERS, WakuIcon, type WakuIconName } from '@/components/proofship-icon'
 import {
   useDaemonSettings,
   useProviderProbes,

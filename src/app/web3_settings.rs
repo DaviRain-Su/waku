@@ -1,7 +1,7 @@
 //! Settings → Networks and Wallets. Daemon owns the files; frames read cache.
 
 use super::*;
-use waku_client::web3::{
+use proofship_client::web3::{
     EvmNetwork, OkxStatus, WalletAccount, WalletBalanceSnapshot, WalletSource, Web3Prefs,
 };
 
@@ -126,32 +126,34 @@ impl Waku {
         } else {
             column = column.child(settings_hint(&theme, tr!("web3.loading")));
         }
-        column = column.child(
-            div().flex().flex_wrap().gap(px(8.0)).children([
-                settings_button(&theme, "web3-refresh-balances", tr!("web3.refresh_balances"))
+        column =
+            column.child(
+                div().flex().flex_wrap().gap(px(8.0)).children([
+                    settings_button(
+                        &theme,
+                        "web3-refresh-balances",
+                        tr!("web3.refresh_balances"),
+                    )
                     .on_click(cx.listener(|this, _, _, cx| this.refresh_wallet_balances(cx))),
-                settings_button(&theme, "web3-create-wallet", tr!("web3.create_wallet")).on_click(
-                    cx.listener(|this, _, window, cx| {
-                        this.open_wallet_dialog(WalletDialogKind::Create, window, cx)
-                    }),
-                ),
-                settings_button(&theme, "web3-import-wallet", tr!("web3.import_wallet")).on_click(
-                    cx.listener(|this, _, window, cx| {
-                        this.open_wallet_dialog(WalletDialogKind::Import, window, cx)
-                    }),
-                ),
-                settings_button(&theme, "web3-watch-wallet", tr!("web3.watch_wallet")).on_click(
-                    cx.listener(|this, _, window, cx| {
-                        this.open_wallet_dialog(WalletDialogKind::Watch, window, cx)
-                    }),
-                ),
-                settings_button(&theme, "web3-env-wallet", tr!("web3.env_wallet")).on_click(
-                    cx.listener(|this, _, window, cx| {
-                        this.open_wallet_dialog(WalletDialogKind::DevEnvKey, window, cx)
-                    }),
-                ),
-            ]),
-        );
+                    settings_button(&theme, "web3-create-wallet", tr!("web3.create_wallet"))
+                        .on_click(cx.listener(|this, _, window, cx| {
+                            this.open_wallet_dialog(WalletDialogKind::Create, window, cx)
+                        })),
+                    settings_button(&theme, "web3-import-wallet", tr!("web3.import_wallet"))
+                        .on_click(cx.listener(|this, _, window, cx| {
+                            this.open_wallet_dialog(WalletDialogKind::Import, window, cx)
+                        })),
+                    settings_button(&theme, "web3-watch-wallet", tr!("web3.watch_wallet"))
+                        .on_click(cx.listener(|this, _, window, cx| {
+                            this.open_wallet_dialog(WalletDialogKind::Watch, window, cx)
+                        })),
+                    settings_button(&theme, "web3-env-wallet", tr!("web3.env_wallet")).on_click(
+                        cx.listener(|this, _, window, cx| {
+                            this.open_wallet_dialog(WalletDialogKind::DevEnvKey, window, cx)
+                        }),
+                    ),
+                ]),
+            );
         if let Some(dialog) = &self.web3_wallet_dialog {
             column = column.child(self.render_wallet_dialog(dialog, &theme, cx));
         }
@@ -163,12 +165,16 @@ impl Waku {
             .as_ref()
             .map(|prefs| prefs.selected_network_id.clone())
             .filter(|id| !id.is_empty())
-            .unwrap_or_else(|| waku_client::web3::default_network_id().to_string())
+            .unwrap_or_else(|| proofship_client::web3::default_network_id().to_string())
     }
 
     pub(super) fn selected_network(&self) -> Option<EvmNetwork> {
         let id = self.selected_network_id();
-        self.web3_networks.as_ref()?.iter().find(|network| network.id == id).cloned()
+        self.web3_networks
+            .as_ref()?
+            .iter()
+            .find(|network| network.id == id)
+            .cloned()
     }
 
     fn render_active_network_picker(&self, theme: &Theme, cx: &mut Context<Self>) -> Div {
@@ -179,16 +185,12 @@ impl Waku {
             .find(|network| network.id == selected)
             .or_else(|| networks.first())
             .map(|network| format!("Chain {} · {}", network.chain_id, network.rpc_url));
-        let mut card = settings_card(theme)
-            .child(settings_title(theme, tr!("web3.active_network")))
-            .child(settings_hint(theme, tr!("web3.active_network_hint")))
-            .child(
-                div()
-                    .mt(px(10.0))
-                    .flex()
-                    .flex_wrap()
-                    .gap(px(8.0))
-                    .children(networks.into_iter().enumerate().map(|(index, network)| {
+        let mut card =
+            settings_card(theme)
+                .child(settings_title(theme, tr!("web3.active_network")))
+                .child(settings_hint(theme, tr!("web3.active_network_hint")))
+                .child(div().mt(px(10.0)).flex().flex_wrap().gap(px(8.0)).children(
+                    networks.into_iter().enumerate().map(|(index, network)| {
                         let id = network.id.clone();
                         let on = id == selected;
                         settings_button(
@@ -202,8 +204,8 @@ impl Waku {
                         .on_click(cx.listener(move |this, _, _, cx| {
                             this.set_selected_network(id.clone(), cx)
                         }))
-                    })),
-            );
+                    }),
+                ));
         if let Some(detail) = detail {
             card = card.child(settings_hint(theme, detail));
         }
@@ -215,10 +217,10 @@ impl Waku {
             selected_network_id: id,
         };
         self.web3_call(
-            waku_client::Command::Web3SetPrefs { prefs },
+            proofship_client::Command::Web3SetPrefs { prefs },
             cx,
             |this, payload, cx| {
-                if let waku_client::ResponsePayload::Web3Prefs { prefs } = payload {
+                if let proofship_client::ResponsePayload::Web3Prefs { prefs } = payload {
                     this.web3_prefs = Some(prefs);
                     this.web3_balances = None;
                     this.refresh_wallet_balances(cx);
@@ -245,9 +247,8 @@ impl Waku {
                             .max_w(px(360.0)),
                     )
                     .child(
-                        settings_button(theme, "web3-okx-save", tr!("web3.save_key")).on_click(
-                            cx.listener(|this, _, _, cx| this.save_okx_key(cx)),
-                        ),
+                        settings_button(theme, "web3-okx-save", tr!("web3.save_key"))
+                            .on_click(cx.listener(|this, _, _, cx| this.save_okx_key(cx))),
                     ),
             )
             .child(
@@ -374,7 +375,11 @@ impl Waku {
     }
 
     fn wallet_balance_snapshot(&self, wallet_id: &str) -> Option<WalletBalanceSnapshot> {
-        self.web3_balances.as_ref()?.iter().find(|row| row.wallet_id == wallet_id).cloned()
+        self.web3_balances
+            .as_ref()?
+            .iter()
+            .find(|row| row.wallet_id == wallet_id)
+            .cloned()
     }
 
     fn render_wallet_balances(
@@ -435,9 +440,8 @@ impl Waku {
                     .flex()
                     .gap(px(8.0))
                     .child(
-                        settings_button(theme, "web3-net-save", tr!("web3.save")).on_click(
-                            cx.listener(|this, _, _, cx| this.submit_network_dialog(cx)),
-                        ),
+                        settings_button(theme, "web3-net-save", tr!("web3.save"))
+                            .on_click(cx.listener(|this, _, _, cx| this.submit_network_dialog(cx))),
                     )
                     .child(
                         settings_button(theme, "web3-net-cancel", tr!("common.cancel")).on_click(
@@ -470,17 +474,15 @@ impl Waku {
                     .flex()
                     .gap(px(8.0))
                     .child(
-                        settings_button(theme, "web3-wallet-save", tr!("web3.save")).on_click(
-                            cx.listener(|this, _, _, cx| this.submit_wallet_dialog(cx)),
-                        ),
+                        settings_button(theme, "web3-wallet-save", tr!("web3.save"))
+                            .on_click(cx.listener(|this, _, _, cx| this.submit_wallet_dialog(cx))),
                     )
                     .child(
-                        settings_button(theme, "web3-wallet-cancel", tr!("common.cancel")).on_click(
-                            cx.listener(|this, _, _, cx| {
+                        settings_button(theme, "web3-wallet-cancel", tr!("common.cancel"))
+                            .on_click(cx.listener(|this, _, _, cx| {
                                 this.web3_wallet_dialog = None;
                                 cx.notify();
-                            }),
-                        ),
+                            })),
                     ),
             )
     }
@@ -501,7 +503,9 @@ impl Waku {
             chain_id.update(cx, |input, cx| {
                 input.set_content(network.chain_id.to_string(), cx)
             });
-            rpc_url.update(cx, |input, cx| input.set_content(network.rpc_url.clone(), cx));
+            rpc_url.update(cx, |input, cx| {
+                input.set_content(network.rpc_url.clone(), cx)
+            });
             explorer_url.update(cx, |input, cx| {
                 input.set_content(network.explorer_url.clone().unwrap_or_default(), cx)
             });
@@ -626,9 +630,9 @@ impl Waku {
                         WalletDialogKind::Create => match daemon.request(
                             Uuid::nil(),
                             Uuid::nil(),
-                            waku_client::Command::Web3CreateWallet { label },
+                            proofship_client::Command::Web3CreateWallet { label },
                         )? {
-                            waku_client::ResponsePayload::Web3WalletCreated { created } => {
+                            proofship_client::ResponsePayload::Web3WalletCreated { created } => {
                                 Ok((created.wallets, Some(created.backup_hex)))
                             }
                             _ => anyhow::bail!("invalid create-wallet response"),
@@ -636,12 +640,12 @@ impl Waku {
                         WalletDialogKind::Import => match daemon.request(
                             Uuid::nil(),
                             Uuid::nil(),
-                            waku_client::Command::Web3ImportWallet {
+                            proofship_client::Command::Web3ImportWallet {
                                 label,
                                 secret: second,
                             },
                         )? {
-                            waku_client::ResponsePayload::Web3Wallets { wallets } => {
+                            proofship_client::ResponsePayload::Web3Wallets { wallets } => {
                                 Ok((wallets, None))
                             }
                             _ => anyhow::bail!("invalid import-wallet response"),
@@ -674,9 +678,9 @@ impl Waku {
                             match daemon.request(
                                 Uuid::nil(),
                                 Uuid::nil(),
-                                waku_client::Command::Web3UpsertWallet { wallet },
+                                proofship_client::Command::Web3UpsertWallet { wallet },
                             )? {
-                                waku_client::ResponsePayload::Web3Wallets { wallets } => {
+                                proofship_client::ResponsePayload::Web3Wallets { wallets } => {
                                     Ok((wallets, None))
                                 }
                                 _ => anyhow::bail!("invalid upsert-wallet response"),
@@ -707,10 +711,10 @@ impl Waku {
 
     fn upsert_network(&mut self, network: EvmNetwork, cx: &mut Context<Self>) {
         self.web3_call(
-            waku_client::Command::Web3UpsertNetwork { network },
+            proofship_client::Command::Web3UpsertNetwork { network },
             cx,
             |this, payload, cx| {
-                if let waku_client::ResponsePayload::Web3Networks { networks } = payload {
+                if let proofship_client::ResponsePayload::Web3Networks { networks } = payload {
                     this.web3_networks = Some(networks);
                     this.refresh_wallet_balances(cx);
                 }
@@ -720,10 +724,10 @@ impl Waku {
 
     fn remove_network(&mut self, id: String, cx: &mut Context<Self>) {
         self.web3_call(
-            waku_client::Command::Web3RemoveNetwork { id },
+            proofship_client::Command::Web3RemoveNetwork { id },
             cx,
             |this, payload, cx| {
-                if let waku_client::ResponsePayload::Web3Networks { networks } = payload {
+                if let proofship_client::ResponsePayload::Web3Networks { networks } = payload {
                     this.web3_networks = Some(networks);
                     this.refresh_wallet_balances(cx);
                 }
@@ -733,10 +737,10 @@ impl Waku {
 
     fn remove_wallet(&mut self, id: String, cx: &mut Context<Self>) {
         self.web3_call(
-            waku_client::Command::Web3RemoveWallet { id },
+            proofship_client::Command::Web3RemoveWallet { id },
             cx,
             |this, payload, cx| {
-                if let waku_client::ResponsePayload::Web3Wallets { wallets } = payload {
+                if let proofship_client::ResponsePayload::Web3Wallets { wallets } = payload {
                     this.web3_wallets = Some(wallets);
                     this.refresh_wallet_balances(cx);
                 }
@@ -748,7 +752,10 @@ impl Waku {
         let Some(wallets) = &self.web3_wallets else {
             return;
         };
-        if !wallets.iter().any(|wallet| !wallet.address.trim().is_empty()) {
+        if !wallets
+            .iter()
+            .any(|wallet| !wallet.address.trim().is_empty())
+        {
             self.web3_balances = Some(Vec::new());
             cx.notify();
             return;
@@ -763,7 +770,7 @@ impl Waku {
                     daemon.request(
                         Uuid::nil(),
                         Uuid::nil(),
-                        waku_client::Command::Web3WalletBalances { wallet_id: None },
+                        proofship_client::Command::Web3WalletBalances { wallet_id: None },
                     )
                 })
                 .await;
@@ -772,7 +779,7 @@ impl Waku {
                     return;
                 }
                 match result {
-                    Ok(waku_client::ResponsePayload::Web3WalletBalances { wallets }) => {
+                    Ok(proofship_client::ResponsePayload::Web3WalletBalances { wallets }) => {
                         this.web3_balances = Some(wallets);
                     }
                     Ok(_) => this.web3_error = Some(tr!("web3.balance_invalid")),
@@ -789,13 +796,13 @@ impl Waku {
         self.web3_okx_input
             .update(cx, |input, cx| input.set_content(String::new(), cx));
         self.web3_call(
-            waku_client::Command::Web3SetOkx {
+            proofship_client::Command::Web3SetOkx {
                 api_key: Some(api_key),
                 enabled: None,
             },
             cx,
             |this, payload, _cx| {
-                if let waku_client::ResponsePayload::Web3OkxStatus { status } = payload {
+                if let proofship_client::ResponsePayload::Web3OkxStatus { status } = payload {
                     this.web3_okx = Some(status);
                 }
             },
@@ -804,13 +811,13 @@ impl Waku {
 
     fn set_okx_enabled(&mut self, enabled: bool, cx: &mut Context<Self>) {
         self.web3_call(
-            waku_client::Command::Web3SetOkx {
+            proofship_client::Command::Web3SetOkx {
                 api_key: None,
                 enabled: Some(enabled),
             },
             cx,
             |this, payload, _cx| {
-                if let waku_client::ResponsePayload::Web3OkxStatus { status } = payload {
+                if let proofship_client::ResponsePayload::Web3OkxStatus { status } = payload {
                     this.web3_okx = Some(status);
                 }
             },
@@ -819,9 +826,11 @@ impl Waku {
 
     fn web3_call(
         &mut self,
-        command: waku_client::Command,
+        command: proofship_client::Command,
         cx: &mut Context<Self>,
-        apply: impl FnOnce(&mut Self, waku_client::ResponsePayload, &mut Context<Self>) + Send + 'static,
+        apply: impl FnOnce(&mut Self, proofship_client::ResponsePayload, &mut Context<Self>)
+        + Send
+        + 'static,
     ) {
         let daemon = self.daemon.client();
         self.web3_generation += 1;
@@ -850,23 +859,38 @@ impl Waku {
 }
 
 fn load_web3_snapshot(
-    daemon: &waku_client::DaemonClient,
+    daemon: &proofship_client::DaemonClient,
 ) -> anyhow::Result<(Vec<EvmNetwork>, Vec<WalletAccount>, OkxStatus, Web3Prefs)> {
-    let networks = match daemon.request(Uuid::nil(), Uuid::nil(), waku_client::Command::Web3Networks)?
-    {
-        waku_client::ResponsePayload::Web3Networks { networks } => networks,
+    let networks = match daemon.request(
+        Uuid::nil(),
+        Uuid::nil(),
+        proofship_client::Command::Web3Networks,
+    )? {
+        proofship_client::ResponsePayload::Web3Networks { networks } => networks,
         _ => anyhow::bail!("invalid networks response"),
     };
-    let wallets = match daemon.request(Uuid::nil(), Uuid::nil(), waku_client::Command::Web3Wallets)? {
-        waku_client::ResponsePayload::Web3Wallets { wallets } => wallets,
+    let wallets = match daemon.request(
+        Uuid::nil(),
+        Uuid::nil(),
+        proofship_client::Command::Web3Wallets,
+    )? {
+        proofship_client::ResponsePayload::Web3Wallets { wallets } => wallets,
         _ => anyhow::bail!("invalid wallets response"),
     };
-    let okx = match daemon.request(Uuid::nil(), Uuid::nil(), waku_client::Command::Web3OkxStatus)? {
-        waku_client::ResponsePayload::Web3OkxStatus { status } => status,
+    let okx = match daemon.request(
+        Uuid::nil(),
+        Uuid::nil(),
+        proofship_client::Command::Web3OkxStatus,
+    )? {
+        proofship_client::ResponsePayload::Web3OkxStatus { status } => status,
         _ => anyhow::bail!("invalid okx response"),
     };
-    let prefs = match daemon.request(Uuid::nil(), Uuid::nil(), waku_client::Command::Web3Prefs)? {
-        waku_client::ResponsePayload::Web3Prefs { prefs } => prefs,
+    let prefs = match daemon.request(
+        Uuid::nil(),
+        Uuid::nil(),
+        proofship_client::Command::Web3Prefs,
+    )? {
+        proofship_client::ResponsePayload::Web3Prefs { prefs } => prefs,
         _ => anyhow::bail!("invalid prefs response"),
     };
     Ok((networks, wallets, okx, prefs))
@@ -946,9 +970,7 @@ fn wallet_dialog_copy(kind: WalletDialogKind) -> (String, String) {
 }
 
 fn form_field(id: impl Into<ElementId>, input: Entity<ComposerInput>) -> Div {
-    div()
-        .mt(px(8.0))
-        .child(TextField::new(id, input).w_full())
+    div().mt(px(8.0)).child(TextField::new(id, input).w_full())
 }
 
 fn render_toggle(
@@ -977,17 +999,11 @@ fn render_toggle(
         .flex()
         .items_center()
         .when(enabled, |element| element.justify_end())
-        .child(
-            div()
-                .w(px(14.0))
-                .h(px(14.0))
-                .rounded_full()
-                .bg(if enabled {
-                    theme.on_inverse
-                } else {
-                    theme.text_tertiary
-                }),
-        )
+        .child(div().w(px(14.0)).h(px(14.0)).rounded_full().bg(if enabled {
+            theme.on_inverse
+        } else {
+            theme.text_tertiary
+        }))
         .on_click(on_click)
 }
 

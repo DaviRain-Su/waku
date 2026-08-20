@@ -45,7 +45,7 @@ mod theme;
 mod ui;
 mod updater;
 
-pub use waku_client::{
+pub use proofship_client::{
     checkpoint, command_env, composer_complete, git_branch, git_commit, i18n, identity, model,
     model_catalog, persistence, projectless, skills, usage, usage_history, worktree,
 };
@@ -185,8 +185,9 @@ impl WakuApplicationExt for Application {
 }
 
 pub fn run() {
+    proofship_protocol::identity::migrate_legacy_data_directory();
     let daemon = crate::daemon::start_process()
-        .unwrap_or_else(|error| panic!("failed to start Waku daemon: {error:#}"));
+        .unwrap_or_else(|error| panic!("failed to start ProofShip daemon: {error:#}"));
     gpui_platform::application()
         .with_assets(crate::assets::Assets)
         .with_main_window_reopen()
@@ -345,7 +346,7 @@ pub fn run() {
                         waku
                     },
                 )
-                .expect("failed to open Waku window");
+                .expect("failed to open ProofShip window");
 
             cx.on_system_notification_response({
                 let window = window;

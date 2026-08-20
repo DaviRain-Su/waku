@@ -3,11 +3,11 @@
 use gpui::{KeyBinding, actions};
 
 use super::*;
-use waku_client::ship::{
+use proofship_client::ship::{
     FrontendDetect, HostingProvider, HostingRecord, HostingTokenStatus, PreviewStatus,
     ShipHistoryItem,
 };
-use waku_client::web3::{
+use proofship_client::web3::{
     DeployArtifact, DeploymentRecord, EvmNetwork, PfToolchainStatus, WalletAccount, WalletSource,
     explorer_address_url, faucet_url, short_digest,
 };
@@ -53,17 +53,13 @@ impl Waku {
         let Some(session) = self.selected_session() else {
             return;
         };
-        let cwd = session
-            .workspace
-            .path()
-            .map(Path::to_path_buf)
-            .or_else(|| {
-                self.state
-                    .projects
-                    .iter()
-                    .find(|project| project.id == session.project_id)
-                    .map(|project| project.path.clone())
-            });
+        let cwd = session.workspace.path().map(Path::to_path_buf).or_else(|| {
+            self.state
+                .projects
+                .iter()
+                .find(|project| project.id == session.project_id)
+                .map(|project| project.path.clone())
+        });
         let Some(cwd) = cwd else {
             self.show_toast(tr!("web3.deploy_no_workspace"));
             return;
@@ -214,7 +210,7 @@ impl Waku {
                     match daemon.request(
                         Uuid::nil(),
                         Uuid::nil(),
-                        waku_client::Command::Web3DeploySend {
+                        proofship_client::Command::Web3DeploySend {
                             bin_path: artifact.bin_path,
                             module: artifact.module,
                             network_id: network.id,
@@ -225,7 +221,7 @@ impl Waku {
                             cwd: Some(cwd),
                         },
                     )? {
-                        waku_client::ResponsePayload::Web3DeploySend { record } => Ok(record),
+                        proofship_client::ResponsePayload::Web3DeploySend { record } => Ok(record),
                         _ => anyhow::bail!("invalid deploy response"),
                     }
                 })
@@ -278,9 +274,9 @@ impl Waku {
             return;
         }
         let ready = dialog.hosting_tokens.as_ref().is_some_and(|tokens| {
-            tokens.iter().any(|token| {
-                token.provider == provider.id() && token.configured && token.enabled
-            })
+            tokens
+                .iter()
+                .any(|token| token.provider == provider.id() && token.configured && token.enabled)
         });
         if !ready {
             dialog.error = Some(tr!("ship.hosting_token_hint"));
@@ -300,9 +296,9 @@ impl Waku {
                     match daemon.request(
                         Uuid::nil(),
                         Uuid::nil(),
-                        waku_client::Command::HostingDeploy { cwd, provider },
+                        proofship_client::Command::HostingDeploy { cwd, provider },
                     )? {
-                        waku_client::ResponsePayload::HostingDeploy { record } => Ok(record),
+                        proofship_client::ResponsePayload::HostingDeploy { record } => Ok(record),
                         _ => anyhow::bail!("invalid hosting deploy response"),
                     }
                 })
@@ -385,9 +381,9 @@ impl Waku {
             .id("deploy-dialog")
             .track_focus(&focus)
             .key_context(DIALOG_CONTEXT)
-            .on_action(cx.listener(|this, _: &DismissDeployDialog, _, cx| {
-                this.close_deploy_dialog(cx)
-            }))
+            .on_action(
+                cx.listener(|this, _: &DismissDeployDialog, _, cx| this.close_deploy_dialog(cx)),
+            )
             .w(px(540.0))
             .max_h(px(720.0))
             .p(px(20.0))
@@ -428,35 +424,44 @@ impl Waku {
                 .flex()
                 .flex_wrap()
                 .gap(px(8.0))
+                .child(ship_action(
+                    &theme,
+                    "ship-preview",
+                    tr!("preview.button"),
+                    cx.listener(|this, _, _, cx| this.start_local_preview(cx)),
+                ))
                 .child(
-                    ship_action(&theme, "ship-preview", tr!("preview.button"), cx.listener(
-                        |this, _, _, cx| this.start_local_preview(cx),
-                    )),
+                    ship_action(
+                        &theme,
+                        "ship-cloudflare",
+                        if hosting {
+                            tr!("ship.hosting")
+                        } else {
+                            tr!("ship.cloudflare")
+                        },
+                        cx.listener(|this, _, _, cx| {
+                            this.send_hosting_deploy(HostingProvider::Cloudflare, cx)
+                        }),
+                    )
+                    .when(
+                        !can_host || !cloudflare_ready || hosting || deploying,
+                        |button| button.opacity(0.45),
+                    ),
                 )
-                .child(ship_action(
-                    &theme,
-                    "ship-cloudflare",
-                    if hosting {
-                        tr!("ship.hosting")
-                    } else {
-                        tr!("ship.cloudflare")
-                    },
-                    cx.listener(|this, _, _, cx| {
-                        this.send_hosting_deploy(HostingProvider::Cloudflare, cx)
-                    }),
-                ).when(!can_host || !cloudflare_ready || hosting || deploying, |button| {
-                    button.opacity(0.45)
-                }))
-                .child(ship_action(
-                    &theme,
-                    "ship-vercel",
-                    tr!("ship.vercel"),
-                    cx.listener(|this, _, _, cx| {
-                        this.send_hosting_deploy(HostingProvider::Vercel, cx)
-                    }),
-                ).when(!can_host || !vercel_ready || hosting || deploying, |button| {
-                    button.opacity(0.45)
-                })),
+                .child(
+                    ship_action(
+                        &theme,
+                        "ship-vercel",
+                        tr!("ship.vercel"),
+                        cx.listener(|this, _, _, cx| {
+                            this.send_hosting_deploy(HostingProvider::Vercel, cx)
+                        }),
+                    )
+                    .when(
+                        !can_host || !vercel_ready || hosting || deploying,
+                        |button| button.opacity(0.45),
+                    ),
+                ),
         );
         if !cloudflare_ready && !vercel_ready {
             body = body.child(hint_line(&theme, tr!("ship.hosting_token_hint")));
@@ -490,12 +495,8 @@ impl Waku {
                 body = body.child(hint_line(&theme, tr!("web3.deploy_no_artifact")));
             }
         } else {
-            body = body.child(self.render_artifact_picker(
-                &artifacts,
-                selected_artifact,
-                &theme,
-                cx,
-            ));
+            body =
+                body.child(self.render_artifact_picker(&artifacts, selected_artifact, &theme, cx));
         }
         body = body.child(self.render_deploy_picker(
             "deploy-network",
@@ -779,27 +780,34 @@ struct ShipSnapshot {
 }
 
 fn load_deploy_snapshot(
-    daemon: &waku_client::DaemonClient,
+    daemon: &proofship_client::DaemonClient,
     cwd: PathBuf,
 ) -> anyhow::Result<ShipSnapshot> {
     let artifacts = match daemon.request(
         Uuid::nil(),
         Uuid::nil(),
-        waku_client::Command::Web3DeployScan { cwd: cwd.clone() },
+        proofship_client::Command::Web3DeployScan { cwd: cwd.clone() },
     )? {
-        waku_client::ResponsePayload::Web3DeployScan { artifacts } => artifacts,
+        proofship_client::ResponsePayload::Web3DeployScan { artifacts } => artifacts,
         _ => anyhow::bail!("invalid deploy scan response"),
     };
-    let networks = match daemon.request(Uuid::nil(), Uuid::nil(), waku_client::Command::Web3Networks)?
-    {
-        waku_client::ResponsePayload::Web3Networks { networks } => networks
+    let networks = match daemon.request(
+        Uuid::nil(),
+        Uuid::nil(),
+        proofship_client::Command::Web3Networks,
+    )? {
+        proofship_client::ResponsePayload::Web3Networks { networks } => networks
             .into_iter()
             .filter(|network| network.enabled)
             .collect(),
         _ => anyhow::bail!("invalid networks response"),
     };
-    let wallets = match daemon.request(Uuid::nil(), Uuid::nil(), waku_client::Command::Web3Wallets)? {
-        waku_client::ResponsePayload::Web3Wallets { wallets } => wallets
+    let wallets = match daemon.request(
+        Uuid::nil(),
+        Uuid::nil(),
+        proofship_client::Command::Web3Wallets,
+    )? {
+        proofship_client::ResponsePayload::Web3Wallets { wallets } => wallets
             .into_iter()
             .filter(|wallet| matches!(wallet.source, WalletSource::Local | WalletSource::DevEnvKey))
             .collect(),
@@ -808,34 +816,41 @@ fn load_deploy_snapshot(
     let frontend = match daemon.request(
         Uuid::nil(),
         Uuid::nil(),
-        waku_client::Command::PreviewScan { cwd: cwd.clone() },
+        proofship_client::Command::PreviewScan { cwd: cwd.clone() },
     )? {
-        waku_client::ResponsePayload::PreviewScan { detect } => detect,
+        proofship_client::ResponsePayload::PreviewScan { detect } => detect,
         _ => anyhow::bail!("invalid preview scan response"),
     };
     let preview = match daemon.request(
         Uuid::nil(),
         Uuid::nil(),
-        waku_client::Command::PreviewStatus { cwd: cwd.clone() },
+        proofship_client::Command::PreviewStatus { cwd: cwd.clone() },
     )? {
-        waku_client::ResponsePayload::PreviewStatus { status } => status,
+        proofship_client::ResponsePayload::PreviewStatus { status } => status,
         _ => anyhow::bail!("invalid preview status response"),
     };
-    let hosting_tokens =
-        match daemon.request(Uuid::nil(), Uuid::nil(), waku_client::Command::HostingTokens)? {
-            waku_client::ResponsePayload::HostingTokens { tokens } => tokens,
-            _ => anyhow::bail!("invalid hosting tokens response"),
-        };
+    let hosting_tokens = match daemon.request(
+        Uuid::nil(),
+        Uuid::nil(),
+        proofship_client::Command::HostingTokens,
+    )? {
+        proofship_client::ResponsePayload::HostingTokens { tokens } => tokens,
+        _ => anyhow::bail!("invalid hosting tokens response"),
+    };
     let history = match daemon.request(
         Uuid::nil(),
         Uuid::nil(),
-        waku_client::Command::ShipHistory { cwd: Some(cwd) },
+        proofship_client::Command::ShipHistory { cwd: Some(cwd) },
     )? {
-        waku_client::ResponsePayload::ShipHistory { items } => items,
+        proofship_client::ResponsePayload::ShipHistory { items } => items,
         _ => anyhow::bail!("invalid ship history response"),
     };
-    let pf = match daemon.request(Uuid::nil(), Uuid::nil(), waku_client::Command::PfStatus) {
-        Ok(waku_client::ResponsePayload::PfStatus { status }) => Some(status),
+    let pf = match daemon.request(
+        Uuid::nil(),
+        Uuid::nil(),
+        proofship_client::Command::PfStatus,
+    ) {
+        Ok(proofship_client::ResponsePayload::PfStatus { status }) => Some(status),
         _ => None,
     };
     Ok(ShipSnapshot {

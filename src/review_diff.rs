@@ -307,22 +307,22 @@ pub fn from_file_changes(changes: &[crate::model::ActivityFileChange]) -> Snapsh
     parse(Source::default(), &numstat, &patch, false)
 }
 
-pub fn wire_source(source: Source) -> waku_client::workspace::ReviewDiffSource {
+pub fn wire_source(source: Source) -> proofship_client::workspace::ReviewDiffSource {
     match source {
         Source::LastTurn {
             session_id,
             turn_id,
             turn_count,
-        } => waku_client::workspace::ReviewDiffSource::LastTurn {
+        } => proofship_client::workspace::ReviewDiffSource::LastTurn {
             session_id,
             turn_id,
             turn_count,
         },
-        Source::Uncommitted => waku_client::workspace::ReviewDiffSource::Uncommitted,
-        Source::Unstaged => waku_client::workspace::ReviewDiffSource::Unstaged,
-        Source::Staged => waku_client::workspace::ReviewDiffSource::Staged,
-        Source::Committed => waku_client::workspace::ReviewDiffSource::Committed,
-        Source::Branch => waku_client::workspace::ReviewDiffSource::Branch,
+        Source::Uncommitted => proofship_client::workspace::ReviewDiffSource::Uncommitted,
+        Source::Unstaged => proofship_client::workspace::ReviewDiffSource::Unstaged,
+        Source::Staged => proofship_client::workspace::ReviewDiffSource::Staged,
+        Source::Committed => proofship_client::workspace::ReviewDiffSource::Committed,
+        Source::Branch => proofship_client::workspace::ReviewDiffSource::Branch,
     }
 }
 

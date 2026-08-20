@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import type { AgentSession, Project } from '@waku/client'
+import type { AgentSession, Project } from '@proofship/client'
 import {
   dateGroup,
   formatTimeAgo,

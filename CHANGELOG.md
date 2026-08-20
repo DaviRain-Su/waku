@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to Waku. This file is the **source of truth for the release
+All notable changes to ProofShip. This file is the **source of truth for the release
 notes shown in the in-app updater**: [`scripts/release.ts`](scripts/release.ts)
 extracts the section whose heading matches the version being released
 (`MARKETING_VERSION`) and publishes it next to the update, so Sparkle shows it in
@@ -16,6 +16,10 @@ the original feature bullet instead of adding separate entries for them.
 
 ## [unreleased]
 
+- Rebrand the desktop as ProofShip
+- Add in-app preview wallet, balances, and a wallet network switcher
+- Add X Layer RPC fallbacks for signing and deployment
+- Bundle the ProofForge MCP gate on Linux and Windows
 - Add Kimi Code support
 
 ## [0.1.8]

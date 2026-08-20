@@ -1,4 +1,4 @@
-# Waku on Linux
+# ProofShip on Linux
 
 ## Install
 
@@ -7,17 +7,17 @@ curl -fsSL https://waku.sh/install.sh | sh
 ```
 
 The script needs no root. It unpacks the release tarball into
-`~/.local/waku.app` and installs the desktop entry into
-`~/.local/share/applications`, so **Waku appears in your applications menu** —
-you can also launch it from a terminal via `waku` command. Run the script again to
+`~/.local/proofship.app` and installs the desktop entry into
+`~/.local/share/applications`, so **ProofShip appears in your applications menu** —
+you can also launch it from a terminal via `proofship` command. Run the script again to
 upgrade; it replaces the previous install rather than merging into it.
 
-Waku expects:
+ProofShip expects:
 
 - **glibc 2.35 or newer** — Ubuntu 22.04, Debian 12, Fedora 36, and anything
   more recent. Releases are built on Ubuntu 22.04, so older distributions must
   build from source.
-- **A working Vulkan or OpenGL driver.** Waku renders through wgpu, which tries
+- **A working Vulkan or OpenGL driver.** ProofShip renders through wgpu, which tries
   Vulkan first and falls back to GL. Software rasterizers (lavapipe, llvmpipe)
   are accepted, so it can run in a VM, but see the note below.
 - **x86_64 or aarch64.** Other architectures build from source.
@@ -28,44 +28,44 @@ Set `WAKU_VERSION` to install a specific version rather than the latest.
 ## Installing manually
 
 The script is a convenience, not a requirement. Download
-`waku-<version>-<target>.tar.gz` from
+`proofship-<version>-<target>.tar.gz` from
 [releases.waku.sh](https://releases.waku.sh) or the
 [GitHub release](https://github.com/egoist/waku/releases), then unpack it
 wherever you like:
 
 ```sh
-mkdir -p ~/.local/waku.app
-tar -xzf waku-<version>-<target>.tar.gz --strip-components=1 -C ~/.local/waku.app
-ln -sf ~/.local/waku.app/bin/waku ~/.local/bin/waku   # optional
+mkdir -p ~/.local/proofship.app
+tar -xzf proofship-<version>-<target>.tar.gz --strip-components=1 -C ~/.local/proofship.app
+ln -sf ~/.local/proofship.app/bin/proofship ~/.local/bin/proofship   # optional
 ```
 
 The archive uses an install-prefix layout (`bin/`, `share/`) beneath one
 versioned directory, so `--strip-components=1` into a prefix such as
 `/usr/local` works too.
 
-**Keep `bin/` intact.** Waku launches `waku-daemon` from its own directory, so
-copying `bin/waku` somewhere on its own leaves it unable to start the daemon.
-A symlink is fine — Waku resolves it back to the real path.
+**Keep `bin/` intact.** ProofShip launches `proofship-daemon` from its own directory, so
+copying `bin/proofship` somewhere on its own leaves it unable to start the daemon.
+A symlink is fine — ProofShip resolves it back to the real path.
 
 Installing the desktop entry is the part that matters — it is how the app is
 launched normally, and it is what associates the running window with its icon
-and name (Waku reports the Wayland `app_id` / X11 `WM_CLASS` `sh.waku`, which
+and name (ProofShip reports the Wayland `app_id` / X11 `WM_CLASS` `sh.waku`, which
 matches the entry's filename). Install the packaged file and point it at the
-install (the packaged copy uses bare `Exec=waku` and `Icon=sh.waku` names so it
+install (the packaged copy uses bare `Exec=proofship` and `Icon=sh.proofship` names so it
 can be relocated):
 
 ```sh
-install -D ~/.local/waku.app/share/applications/sh.waku.desktop \
+install -D ~/.local/proofship.app/share/applications/sh.proofship.desktop \
   -t ~/.local/share/applications
-sed -i "s|^Exec=waku$|Exec=$HOME/.local/waku.app/bin/waku|" \
-  ~/.local/share/applications/sh.waku.desktop
-sed -i "s|^Icon=sh.waku$|Icon=$HOME/.local/waku.app/share/icons/hicolor/256x256/apps/sh.waku.png|" \
-  ~/.local/share/applications/sh.waku.desktop
+sed -i "s|^Exec=proofship$|Exec=$HOME/.local/proofship.app/bin/proofship|" \
+  ~/.local/share/applications/sh.proofship.desktop
+sed -i "s|^Icon=sh.proofship$|Icon=$HOME/.local/proofship.app/share/icons/hicolor/256x256/apps/sh.proofship.png|" \
+  ~/.local/share/applications/sh.proofship.desktop
 ```
 
 ## Updating
 
-Waku does not update itself on Linux — Sparkle is macOS-only. Re-run the
+ProofShip does not update itself on Linux — Sparkle is macOS-only. Re-run the
 install script to upgrade.
 
 ## Uninstalling
@@ -74,7 +74,7 @@ install script to upgrade.
 curl -fsSL https://waku.sh/install.sh | sh -s -- --uninstall
 ```
 
-This removes `~/.local/waku.app`, the symlink, and the desktop entry. Projects
+This removes `~/.local/proofship.app`, the symlink, and the desktop entry. Projects
 and settings stay in `~/.waku`; delete that directory to remove them too.
 
 ## Building from source
@@ -89,7 +89,7 @@ produce the same archive this page installs with:
 To exercise the install script against that local build:
 
 ```sh
-WAKU_BUNDLE_PATH=target/release/waku-<version>-<target>.tar.gz \
+WAKU_BUNDLE_PATH=target/release/proofship-<version>-<target>.tar.gz \
   sh website/public/install.sh
 ```
 
@@ -100,7 +100,7 @@ rasterizer. That works in principle — wgpu accepts a CPU adapter — but both
 lavapipe (Vulkan) and llvmpipe (GL) JIT-compile shaders through LLVM, and that
 path is fragile: on Fedora 44 aarch64 (mesa 26.0.3 + LLVM 22.1) it segfaults
 inside `gallivm_jit_function` while compiling a fragment shader. The crash is
-in the driver, not in Waku, and no application-side setting avoids it.
+in the driver, not in ProofShip, and no application-side setting avoids it.
 
 If the app dies on its first frame in a VM, check `coredumpctl info` for a
 backtrace through `libvulkan_lvp.so` or `libgallium`. The reliable fix is to

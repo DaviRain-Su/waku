@@ -8,12 +8,12 @@ import type {
   ProviderSlice,
   UsageHistory,
   UsageWindow,
-} from '@waku/client'
+} from '@proofship/client'
 import { useState, type ReactNode } from 'react'
 import { Virtuoso } from 'react-virtuoso'
 import { ControlMenu } from '@/components/control-menu'
 import { UsageTrendChart, type UsageMetric } from '@/components/usage-chart'
-import { ProviderIcon, WakuIcon } from '@/components/waku-icon'
+import { ProviderIcon, WakuIcon } from '@/components/proofship-icon'
 import { useUsageHistory } from '@/hooks/use-daemon-data'
 import { useI18n, type AppLocale } from '@/lib/i18n'
 import type { Translator } from '@/lib/transcript-presentation'

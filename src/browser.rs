@@ -466,9 +466,7 @@ mod host {
     /// data, so a per-user install never needs to write into its own
     /// program directory.
     fn user_data_folder() -> Option<HSTRING> {
-        let path = dirs::data_local_dir()?
-            .join(waku_protocol::identity::DATA_DIRECTORY_NAME)
-            .join("WebView2");
+        let path = proofship_protocol::identity::data_directory().join("WebView2");
         std::fs::create_dir_all(&path).ok()?;
         Some(HSTRING::from(path.as_path()))
     }

@@ -1,7 +1,7 @@
 //! Settings → ProofForge. Daemon owns the compiler install; frames read cache.
 
 use super::*;
-use waku_client::web3::PfToolchainStatus;
+use proofship_client::web3::PfToolchainStatus;
 
 impl Waku {
     pub(super) fn ensure_pf_settings(&mut self, force: bool, cx: &mut Context<Self>) {
@@ -19,7 +19,11 @@ impl Waku {
             let result = cx
                 .background_executor()
                 .spawn(async move {
-                    daemon.request(Uuid::nil(), Uuid::nil(), waku_client::Command::PfStatus)
+                    daemon.request(
+                        Uuid::nil(),
+                        Uuid::nil(),
+                        proofship_client::Command::PfStatus,
+                    )
                 })
                 .await;
             let _ = this.update(cx, |this, cx| {
@@ -28,7 +32,7 @@ impl Waku {
                 }
                 this.pf_pending = false;
                 match result {
-                    Ok(waku_client::ResponsePayload::PfStatus { status }) => {
+                    Ok(proofship_client::ResponsePayload::PfStatus { status }) => {
                         this.pf_status = Some(status.clone());
                         this.pf_error = None;
                         if status.state == "installing" {
@@ -97,55 +101,52 @@ impl Waku {
         .filter(|part| !part.is_empty())
         .collect::<Vec<_>>()
         .join(" · ");
-        pf_card(theme)
-            .child(
-                div()
-                    .flex()
-                    .items_center()
-                    .justify_between()
-                    .gap(px(12.0))
-                    .child(
-                        div()
-                            .min_w_0()
-                            .flex()
-                            .flex_col()
-                            .gap(px(2.0))
-                            .child(pf_title(theme, state_label))
-                            .when(!detail.is_empty(), |column| {
-                                column.child(pf_hint(theme, detail))
-                            })
-                            .when_some(status.error.clone(), |column, error| {
-                                column.child(pf_error(theme, error))
-                            }),
-                    )
-                    .child(
-                        div()
-                            .flex()
-                            .items_center()
-                            .gap(px(8.0))
-                            .when(status.state == "missing", |row| {
+        pf_card(theme).child(
+            div()
+                .flex()
+                .items_center()
+                .justify_between()
+                .gap(px(12.0))
+                .child(
+                    div()
+                        .min_w_0()
+                        .flex()
+                        .flex_col()
+                        .gap(px(2.0))
+                        .child(pf_title(theme, state_label))
+                        .when(!detail.is_empty(), |column| {
+                            column.child(pf_hint(theme, detail))
+                        })
+                        .when_some(status.error.clone(), |column, error| {
+                            column.child(pf_error(theme, error))
+                        }),
+                )
+                .child(
+                    div()
+                        .flex()
+                        .items_center()
+                        .gap(px(8.0))
+                        .when(status.state == "missing", |row| {
+                            row.child(
+                                pf_button(theme, "pf-install", tr!("pf.install"))
+                                    .on_click(cx.listener(|this, _, _, cx| this.install_pf(cx))),
+                            )
+                        })
+                        .when(status.state == "installing", |row| {
+                            row.child(pf_hint(theme, tr!("pf.installing")))
+                        })
+                        .when(
+                            status.state == "ready" && status.source.as_deref() == Some("managed"),
+                            |row| {
                                 row.child(
-                                    pf_button(theme, "pf-install", tr!("pf.install")).on_click(
-                                        cx.listener(|this, _, _, cx| this.install_pf(cx)),
+                                    pf_button(theme, "pf-uninstall", tr!("pf.uninstall")).on_click(
+                                        cx.listener(|this, _, _, cx| this.uninstall_pf(cx)),
                                     ),
                                 )
-                            })
-                            .when(status.state == "installing", |row| {
-                                row.child(pf_hint(theme, tr!("pf.installing")))
-                            })
-                            .when(
-                                status.state == "ready" && status.source.as_deref() == Some("managed"),
-                                |row| {
-                                    row.child(
-                                        pf_button(theme, "pf-uninstall", tr!("pf.uninstall"))
-                                            .on_click(cx.listener(|this, _, _, cx| {
-                                                this.uninstall_pf(cx)
-                                            })),
-                                    )
-                                },
-                            ),
-                    ),
-            )
+                            },
+                        ),
+                ),
+        )
     }
 
     fn install_pf(&mut self, cx: &mut Context<Self>) {
@@ -157,7 +158,11 @@ impl Waku {
             let result = cx
                 .background_executor()
                 .spawn(async move {
-                    daemon.request(Uuid::nil(), Uuid::nil(), waku_client::Command::PfInstall)
+                    daemon.request(
+                        Uuid::nil(),
+                        Uuid::nil(),
+                        proofship_client::Command::PfInstall,
+                    )
                 })
                 .await;
             let _ = this.update(cx, |this, cx| {
@@ -166,7 +171,7 @@ impl Waku {
                 }
                 this.pf_pending = false;
                 match result {
-                    Ok(waku_client::ResponsePayload::PfStatus { status }) => {
+                    Ok(proofship_client::ResponsePayload::PfStatus { status }) => {
                         this.pf_status = Some(status.clone());
                         this.pf_error = None;
                         if status.state == "installing" {
@@ -194,7 +199,11 @@ impl Waku {
             let result = cx
                 .background_executor()
                 .spawn(async move {
-                    daemon.request(Uuid::nil(), Uuid::nil(), waku_client::Command::PfUninstall)
+                    daemon.request(
+                        Uuid::nil(),
+                        Uuid::nil(),
+                        proofship_client::Command::PfUninstall,
+                    )
                 })
                 .await;
             let _ = this.update(cx, |this, cx| {
@@ -203,7 +212,7 @@ impl Waku {
                 }
                 this.pf_pending = false;
                 match result {
-                    Ok(waku_client::ResponsePayload::PfStatus { status }) => {
+                    Ok(proofship_client::ResponsePayload::PfStatus { status }) => {
                         this.pf_status = Some(status);
                         this.pf_error = None;
                     }
@@ -230,7 +239,11 @@ impl Waku {
                     .spawn({
                         let daemon = daemon.clone();
                         async move {
-                            daemon.request(Uuid::nil(), Uuid::nil(), waku_client::Command::PfStatus)
+                            daemon.request(
+                                Uuid::nil(),
+                                Uuid::nil(),
+                                proofship_client::Command::PfStatus,
+                            )
                         }
                     })
                     .await;
@@ -239,7 +252,8 @@ impl Waku {
                         if this.pf_generation != generation {
                             return true;
                         }
-                        if let Ok(waku_client::ResponsePayload::PfStatus { status }) = snapshot {
+                        if let Ok(proofship_client::ResponsePayload::PfStatus { status }) = snapshot
+                        {
                             this.pf_status = Some(status.clone());
                             this.pf_error = None;
                             cx.notify();

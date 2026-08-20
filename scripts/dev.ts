@@ -11,8 +11,8 @@ const targetDir = resolve(root, process.env.CARGO_TARGET_DIR || "target");
 const executableSuffix = process.platform === "win32" ? ".exe" : "";
 const appPath = isMacOS
   ? join(targetDir, "debug/ProofShip Debug.app")
-  : join(targetDir, `debug/waku${executableSuffix}`);
-const daemonPath = join(targetDir, `debug/waku-debug-daemon${executableSuffix}`);
+  : join(targetDir, `debug/proofship${executableSuffix}`);
+const daemonPath = join(targetDir, `debug/proofship-debug-daemon${executableSuffix}`);
 const watchedDirectories = ["src", "crates", "assets", "resources", "locales"];
 const watchedFiles = ["Cargo.toml", "Cargo.lock", "build.rs"];
 const rebuildDebounceMs = 1_000;
@@ -42,7 +42,7 @@ async function build(target: BuildTarget): Promise<boolean> {
   }
   const result = isMacOS
     ? await $`${join(root, "scripts/bundle.sh")} debug`.nothrow()
-    : await $`cargo build --package waku --bin waku --bin waku_js_repl`.nothrow();
+    : await $`cargo build --package proofship --bin proofship --bin proofship_js_repl`.nothrow();
   if (result.exitCode !== 0) {
     console.error("[waku-dev] Build failed; keeping the current app open.");
     return false;
@@ -53,7 +53,7 @@ async function build(target: BuildTarget): Promise<boolean> {
 async function buildDaemon(): Promise<boolean> {
   console.log("[waku-dev] Building daemon...");
   const result =
-    await $`cargo build --package waku-daemon --features dev-binary --bin waku-debug-daemon --package waku-pf-mcp --bin waku-pf-mcp`.nothrow();
+    await $`cargo build --package proofship-daemon --features dev-binary --bin proofship-debug-daemon --package proofship-pf-mcp --bin proofship-pf-mcp`.nothrow();
   if (result.exitCode !== 0) {
     console.error("[waku-dev] Daemon build failed; keeping the current daemon running.");
     return false;
@@ -122,8 +122,8 @@ function targetForChange(directory: string, filename: string | Buffer | null): B
   if (directory !== "crates" || filename === null) return "app";
   const relativePath = filename.toString().replaceAll("\\", "/");
   if (
-    relativePath.startsWith("waku-daemon/") ||
-    relativePath.startsWith("waku-core/")
+    relativePath.startsWith("proofship-daemon/") ||
+    relativePath.startsWith("proofship-core/")
   ) {
     return "daemon";
   }

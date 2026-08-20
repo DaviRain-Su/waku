@@ -1334,11 +1334,7 @@ mod windows {
     }
 
     fn preference_path() -> Option<PathBuf> {
-        Some(
-            dirs::data_local_dir()?
-                .join(waku_protocol::identity::DATA_DIRECTORY_NAME)
-                .join("updater.json"),
-        )
+        Some(proofship_protocol::identity::data_directory().join("updater.json"))
     }
 
     /// Sparkle's macOS default is to check automatically; match it, and treat

@@ -22,7 +22,7 @@ function addCandidate(path: string): void {
 }
 
 function isDebugDiagnostic(name: string): boolean {
-  return /^Waku Debug(?: Computer Use)?[-_.]/.test(name);
+  return /^(?:Waku|ProofShip) Debug(?: Computer Use)?[-_.]/.test(name);
 }
 
 async function addMatchingChildren(
@@ -80,7 +80,8 @@ addCandidate(join(userHome, "Applications", "Waku Debug.app"));
 addCandidate("/Applications/ProofShip Debug.app");
 addCandidate("/Applications/Waku Debug.app");
 
-// Debug-only app data. The release app uses Waku/sh.waku and is not included.
+// Debug-only app data. The release app uses ProofShip/sh.waku and is not included.
+addCandidate(join(library, "Application Support", "ProofShip Debug"));
 addCandidate(join(library, "Application Support", "Waku Debug"));
 addCandidate(
   join(
@@ -91,7 +92,18 @@ addCandidate(
     "Waku Debug Computer Use.app",
   ),
 );
+addCandidate(
+  join(
+    library,
+    "Application Support",
+    "ProofShip",
+    "Computer Use",
+    "ProofShip Debug Computer Use.app",
+  ),
+);
+addCandidate(join(library, "Caches", "ProofShip Debug"));
 addCandidate(join(library, "Caches", "Waku Debug"));
+addCandidate(join(library, "Logs", "ProofShip Debug"));
 addCandidate(join(library, "Logs", "Waku Debug"));
 
 // codes.waku.dev was Waku Debug's bundle ID before sh.waku.dev.
@@ -136,18 +148,23 @@ await addMatchingChildren(
 
 const targets = await existingTargets();
 if (targets.length === 0) {
-  console.log("No Waku Debug files or directories found.");
+  console.log("No ProofShip Debug files or directories found.");
   process.exit(0);
 }
 
 console.log(
-  "The following Waku Debug paths, including directory contents, will be permanently deleted:\n",
+  "The following ProofShip Debug paths, including directory contents, will be permanently deleted:\n",
 );
 for (const target of targets) {
   console.log(`  [${target.kind}] ${target.path}`);
 }
 
-const runningProcesses = ["Waku Debug", "Waku Debug Computer Use"].filter(
+const runningProcesses = [
+  "ProofShip Debug",
+  "ProofShip Debug Computer Use",
+  "Waku Debug",
+  "Waku Debug Computer Use",
+].filter(
   (name) =>
     Bun.spawnSync(["/usr/bin/pgrep", "-x", name], {
       stdout: "ignore",

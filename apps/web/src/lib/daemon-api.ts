@@ -25,7 +25,7 @@ import type {
   WorkingTreeEntry,
   WorkspaceOperation,
   WorkspaceResult,
-} from '@waku/client'
+} from '@proofship/client'
 
 export type TaskState = Extract<ResponsePayload, { type: 'taskState' }>
 export type DaemonDirectory = Extract<WorkspaceResult, { type: 'directory' }>

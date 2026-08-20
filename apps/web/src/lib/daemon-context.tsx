@@ -1,5 +1,5 @@
 import { useQueryClient } from '@tanstack/react-query'
-import { WakuClient } from '@waku/client'
+import { WakuClient } from '@proofship/client'
 import {
   createContext,
   useCallback,

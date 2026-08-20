@@ -1,4 +1,4 @@
-import type { ProviderKind, ProviderModel } from '@waku/client'
+import type { ProviderKind, ProviderModel } from '@proofship/client'
 
 export interface ModelPickerRow {
   provider: ProviderKind

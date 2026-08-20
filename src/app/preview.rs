@@ -1,7 +1,7 @@
 //! Local frontend preview: scan off-thread, then open the existing Browser.
 
 use super::*;
-use waku_client::ship::PreviewStatus;
+use proofship_client::ship::PreviewStatus;
 
 impl Waku {
     pub(super) fn session_cwd(&self) -> Option<PathBuf> {
@@ -39,9 +39,11 @@ impl Waku {
                     match daemon.request(
                         Uuid::nil(),
                         Uuid::nil(),
-                        waku_client::Command::PreviewScan { cwd },
+                        proofship_client::Command::PreviewScan { cwd },
                     ) {
-                        Ok(waku_client::ResponsePayload::PreviewScan { detect }) => Some(detect),
+                        Ok(proofship_client::ResponsePayload::PreviewScan { detect }) => {
+                            Some(detect)
+                        }
                         _ => None,
                     }
                 })
@@ -85,9 +87,9 @@ impl Waku {
                     match daemon.request(
                         Uuid::nil(),
                         Uuid::nil(),
-                        waku_client::Command::PreviewStart { cwd },
+                        proofship_client::Command::PreviewStart { cwd },
                     )? {
-                        waku_client::ResponsePayload::PreviewStatus { status } => Ok(status),
+                        proofship_client::ResponsePayload::PreviewStatus { status } => Ok(status),
                         _ => anyhow::bail!("invalid preview response"),
                     }
                 })
@@ -167,10 +169,9 @@ impl Waku {
                 let _ = daemon.request(
                     Uuid::nil(),
                     Uuid::nil(),
-                    waku_client::Command::PreviewStop { cwd },
+                    proofship_client::Command::PreviewStop { cwd },
                 );
             })
             .detach();
     }
 }
-

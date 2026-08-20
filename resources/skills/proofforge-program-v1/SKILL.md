@@ -1,14 +1,14 @@
 ---
 name: proofforge-program-v1
 description: >-
-  Draft and gate arbitrary ProofForge ProgramV1 contracts for Waku.
+  Draft and gate arbitrary ProofForge ProgramV1 contracts for ProofShip.
   Use when the user wants NL→Lean ProgramV1, check/build/inspect, PF-* repair,
   or any deployable on-chain program (not a specific business vertical).
 ---
 
-# ProofForge ProgramV1 (Waku ship lane)
+# ProofForge ProgramV1 (ProofShip ship lane)
 
-Waku can run the ProofShip ship lane: natural language → agent drafts **any**
+ProofShip can run the ship lane: natural language → agent drafts **any**
 ProgramV1 contract → ProofForge machine gate decides if it ships → deploy
 (first chain: X Layer).
 
@@ -21,7 +21,7 @@ skill.
 When a ProofForge toolchain is detected on the host, every session prompt gets
 this text prepended and the ProofForge MCP gate (`pf_doctor` / `pf_check` /
 `pf_build` / `pf_artifacts`) attached automatically. The gate server is
-`waku-pf-mcp` (stdio). Tool results are a JSON wrap
+`proofship-pf-mcp` (stdio). Tool results are a JSON wrap
 `{ok, exitCode, stdout, stderr, parsed, error}`; on failure read
 `parsed.diagnostics[]` and repair in order.
 
@@ -128,7 +128,7 @@ user's explicit state, entries, and checks.
 - Do not emit ABI, bytecode, README, or extra Lean files.
 - Explain rules in product language, not compiler internals.
 - Before ship: check pass, build artifact list, inspect digest when present.
-- Tell the user to deploy from Waku's session Deploy button after the gate passes.
+- Tell the user to deploy from ProofShip's session Deploy button after the gate passes.
 
 ## 7. Honesty
 

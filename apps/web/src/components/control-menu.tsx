@@ -1,6 +1,6 @@
 import { Menu } from '@base-ui/react/menu'
 import { type ReactNode, type RefObject, useState } from 'react'
-import { WakuIcon, type WakuIconName } from '@/components/waku-icon'
+import { WakuIcon, type WakuIconName } from '@/components/proofship-icon'
 import { cn } from '@/lib/utils'
 
 export interface ControlMenuItem {

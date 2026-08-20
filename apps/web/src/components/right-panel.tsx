@@ -1,6 +1,6 @@
 import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { Editor } from '@pierre/diffs/edit'
-import type { AgentSession, Project, ReviewDiffSource, WorkingTreeEntry } from '@waku/client'
+import type { AgentSession, Project, ReviewDiffSource, WorkingTreeEntry } from '@proofship/client'
 import { GhosttyCore } from '@wterm/ghostty'
 import { Terminal, useTerminal } from '@wterm/react'
 import {
@@ -20,7 +20,7 @@ import { toast } from 'sonner'
 import { ControlMenu } from '@/components/control-menu'
 import { PanelResizeHandle } from '@/components/panel-resize-handle'
 import { Button } from '@/components/ui/button'
-import { FileTypeIcon, WakuIcon, type WakuIconName } from '@/components/waku-icon'
+import { FileTypeIcon, WakuIcon, type WakuIconName } from '@/components/proofship-icon'
 import type { CodeDiffSurfaceHandle, DiffSurfaceFile } from '@/components/code-surfaces'
 import {
   collectWorkspaceDiff,

@@ -1,11 +1,11 @@
-import type { AgentSession } from '@waku/client'
+import type { AgentSession } from '@proofship/client'
 import { ContextMenu } from '@base-ui/react/context-menu'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Virtuoso } from 'react-virtuoso'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { PanelResizeHandle } from '@/components/panel-resize-handle'
-import { WakuIcon } from '@/components/waku-icon'
+import { WakuIcon } from '@/components/proofship-icon'
 import { displayTitle, type TaskState } from '@/lib/daemon-api'
 import { useDaemon } from '@/lib/daemon-context'
 import { useI18n } from '@/lib/i18n'
@@ -109,7 +109,7 @@ export function Sidebar({
       >
         <header className="flex h-12 shrink-0 items-center px-2.5">
           <img
-            alt="Waku"
+            alt="ProofShip"
             className="size-6 rounded-md"
             draggable={false}
             src={wakuAppIconUrl}

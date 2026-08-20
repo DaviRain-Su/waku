@@ -1,5 +1,5 @@
 import { Button } from '@/components/ui/button'
-import { WakuIcon } from '@/components/waku-icon'
+import { WakuIcon } from '@/components/proofship-icon'
 import { useI18n } from '@/lib/i18n'
 import wakuAppIconUrl from '../../../../website/public/app-icon.png'
 

@@ -80,7 +80,7 @@
     uuid: "a8e1d6c4-2b7f-4c19-9e5a-7f3b1d0c8e22",
     name: "ProofShip",
     rdns: "sh.waku.wallet",
-    icon: "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%230B0F14'/><path d='M7 16 L16 8 L25 16 L16 13 Z' fill='%23F97316'/><path d='M11 18 L16 24 L21 18 L16 20 Z' fill='%23A8B3C2'/></svg>",
+    icon: "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%230C1016'/><path d='M8 10 L18 16 L8 22 Z' fill='%233A4250'/><path d='M13 10 L24 16 L13 22 Z' fill='%23FF6B00'/></svg>",
   });
   function announce() {
     try {

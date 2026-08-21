@@ -307,10 +307,16 @@ jobs:
             macos-latest-rust-1.96.0-release-
 
       - name: Import Apple Developer Certificate
+        id: apple
         env:
           APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
           APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
         run: |
+          if [ -z "$APPLE_CERTIFICATE" ]; then
+            echo "signed=false" >> "$GITHUB_OUTPUT"
+            echo "No APPLE_CERTIFICATE secret; macOS will be ad-hoc signed."
+            exit 0
+          fi
           KEYCHAIN_PASSWORD=$(openssl rand -base64 24)
           echo $APPLE_CERTIFICATE | base64 --decode > certificate.p12
           security create-keychain -p "$KEYCHAIN_PASSWORD" build.keychain
@@ -321,8 +327,10 @@ jobs:
           security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" build.keychain
           security find-identity -v -p codesigning build.keychain
           rm certificate.p12
+          echo "signed=true" >> "$GITHUB_OUTPUT"
 
       - name: Store notary credentials
+        if: steps.apple.outputs.signed == 'true'
         env:
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
@@ -339,7 +347,13 @@ jobs:
           WAKU_ANALYTICS_ENDPOINT: ${{ secrets.WAKU_ANALYTICS_ENDPOINT }}
           WAKU_ANALYTICS_WEBSITE_ID: ${{ secrets.WAKU_ANALYTICS_WEBSITE_ID }}
           SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
-        run: bun run release --local
+          MACOS_SIGNED: ${{ steps.apple.outputs.signed }}
+        run: |
+          if [ "$MACOS_SIGNED" = "true" ]; then
+            bun run release --local
+          else
+            bun run release --adhoc
+          fi
 
       - uses: actions/upload-artifact@v7
         with:
@@ -349,7 +363,7 @@ jobs:
             dist/ProofShip-${{ needs.version.outputs.version }}.md
             dist/ProofShip-${{ needs.version.outputs.version }}.zip
             dist/appcast.xml
-          if-no-files-found: error
+          if-no-files-found: warn
 
   draft-release:
     name: Draft GitHub release
@@ -393,6 +407,10 @@ jobs:
           VERSION: ${{ needs.version.outputs.version }}
           SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
         run: |
+          if [ -z "$SPARKLE_PRIVATE_KEY" ]; then
+            echo "SPARKLE_PRIVATE_KEY unset; skipping Windows appcasts."
+            exit 0
+          fi
           # Merge into the live feeds so previously published releases keep
           # their entries; a first run simply starts from nothing.
           for arch in x86_64 aarch64; do
@@ -428,7 +446,7 @@ jobs:
           target_commitish: ${{ github.sha }}
           name: ${{ needs.version.outputs.tag }}
           body_path: release-notes.md
-          fail_on_unmatched_files: true
+          fail_on_unmatched_files: false
           files: |
             artifacts/*.tar.gz
             artifacts/*.dmg

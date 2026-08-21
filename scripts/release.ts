@@ -653,9 +653,16 @@ try {
       : `No "${version}" section in CHANGELOG.md — attached fallback notes.`,
   );
 
-  logStep("Generating the signed appcast");
-  await generateAppcast(updatesDirectory, downloadUrlPrefix);
-  await $`ditto ${join(updatesDirectory, "appcast.xml")} ${join(projectRoot, "dist", "appcast.xml")}`;
+  const sparkleKey = process.env.SPARKLE_PRIVATE_KEY?.trim();
+  if (sparkleKey || !adhoc) {
+    logStep("Generating the signed appcast");
+    await generateAppcast(updatesDirectory, downloadUrlPrefix);
+    await $`ditto ${join(updatesDirectory, "appcast.xml")} ${join(projectRoot, "dist", "appcast.xml")}`;
+  } else {
+    console.warn(
+      "SPARKLE_PRIVATE_KEY unset; skipping the signed appcast on this ad-hoc build.",
+    );
+  }
 
   if (publishing) {
     // Archives and the DMG are immutable once published → cache forever.

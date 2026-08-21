@@ -2057,6 +2057,7 @@ impl Waku {
                 ComposerEvent::SubmitSteer(prompt) => {
                     this.submit_message_edit_prompt(prompt.clone(), cx)
                 }
+                ComposerEvent::SteerQueued => {}
                 ComposerEvent::Edited => cx.notify(),
                 ComposerEvent::Focus => {}
                 ComposerEvent::BackspaceOnEmpty => {}
@@ -2775,22 +2776,44 @@ impl Waku {
         // A turn that has not reached the provider yet cannot be steered; the
         // driver reports the outcome asynchronously via SteerAccepted or
         // SteerRejected once it is handed off.
-        let steerable = session.status != SessionStatus::Connecting
-            && self
-                .runtimes
-                .get(&session.id)
-                .is_some_and(|runtime| runtime.driver.supports_steer());
-        if !steerable {
+        if !self.session_can_steer(&session) {
             self.enqueue_follow_up_submission(session.id, submission, cx);
             return;
         }
+        let provider_prompt = self.resolve_skill_submission(session.provider, &submission.prompt);
         if let Some(runtime) = self.runtimes.get_mut(&session.id) {
-            runtime.driver.steer(submission.prompt.clone());
+            runtime.driver.steer(provider_prompt);
             runtime.pending_steers.push_back(submission);
         } else {
             self.enqueue_follow_up_submission(session.id, submission, cx);
         }
         cx.notify();
+    }
+
+    pub(super) fn session_can_steer(&self, session: &AgentSession) -> bool {
+        session.is_busy()
+            && session.status != SessionStatus::Connecting
+            && self
+                .runtimes
+                .get(&session.id)
+                .is_some_and(|runtime| runtime.driver.supports_steer())
+    }
+
+    /// Resolve presentation-preserving composer syntax immediately before a
+    /// prompt crosses into a provider transport.
+    fn resolve_provider_submission(&self, provider: ProviderKind, prompt: &str) -> String {
+        crate::composer_complete::resolved_submission(provider, prompt, &self.slash_command_index)
+            .unwrap_or_else(|| prompt.to_owned())
+    }
+
+    /// Resolve only provider-native skill syntax for a live steering message.
+    fn resolve_skill_submission(&self, provider: ProviderKind, prompt: &str) -> String {
+        crate::composer_complete::resolved_skill_submission(
+            provider,
+            prompt,
+            &self.slash_command_index,
+        )
+        .unwrap_or_else(|| prompt.to_owned())
     }
 
     pub(super) fn enqueue_follow_up_submission(
@@ -2874,6 +2897,21 @@ impl Waku {
         };
         self.save();
         self.steer_composer_submission(ComposerSubmission::from_queued_message(message), cx);
+    }
+
+    /// Activate the same action as the oldest queued row's Steer control.
+    /// When that control is unavailable, leave the queue untouched rather
+    /// than removing and re-queueing its first message at the back.
+    pub(super) fn steer_oldest_queued_message(&mut self, cx: &mut Context<Self>) {
+        let Some((session_id, message_id)) = self.selected_session().and_then(|session| {
+            if !self.session_can_steer(session) {
+                return None;
+            }
+            Some((session.id, session.queued_messages.first()?.id))
+        }) else {
+            return;
+        };
+        self.steer_queued_message(session_id, message_id, cx);
     }
 
     /// Start the next queued follow-up as a fresh turn. Only called once a
@@ -3195,15 +3233,19 @@ impl Waku {
         if selected && let Some(warning) = checkpoint_warning {
             self.show_toast(warning);
         }
-        // Template commands expand here, at the seam between the transcript
-        // and the transport: the user message keeps the typed `/name …` —
-        // the same echo the CLIs show — while the provider receives the
-        // rendered prompt. Claude's commands pass through untouched; its CLI
-        // owns their expansion.
+        let provider = self
+            .state
+            .sessions
+            .iter()
+            .find(|session| session.id == session_id)
+            .map(|session| session.provider)
+            .unwrap_or(self.state.last_provider);
+        // Provider syntax resolves here, at the seam between the transcript
+        // and the transport. The user message keeps the typed slash form,
+        // while templates expand and skills adopt provider-native syntax.
+        // Claude's commands pass through untouched; its CLI owns expansion.
         let prompt = submission.prompt;
-        let driver_prompt =
-            crate::composer_complete::expanded_submission(&prompt, &self.slash_command_index)
-                .unwrap_or(prompt);
+        let driver_prompt = self.resolve_provider_submission(provider, &prompt);
         let mut failed_to_start = false;
         match driver {
             Ok(driver) => driver.prompt(driver_prompt),

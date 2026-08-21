@@ -324,9 +324,10 @@ enum RemoteImageState {
     Unavailable,
 }
 
-/// One accepted composer submission. `prompt` is the exact provider-facing
-/// text; presentation metadata keeps its appended attachment mentions out of
-/// the user bubble.
+/// One accepted composer submission. `prompt` preserves the composer and
+/// transcript syntax; provider-specific command syntax resolves only at the
+/// transport boundary. Presentation metadata keeps appended attachment
+/// mentions out of the user bubble.
 #[derive(Clone, Debug)]
 struct ComposerSubmission {
     prompt: String,
@@ -2387,6 +2388,15 @@ impl Waku {
                             this.submission_with_attachments(prompt, cx)
                         {
                             this.steer_composer_submission(submission, cx);
+                        }
+                    }
+                    ComposerEvent::SteerQueued => {
+                        // Staged attachments make this a real draft even when
+                        // the text field is empty. Preserve the shortcut's
+                        // previous no-op behavior until that draft is sent or
+                        // cleared.
+                        if this.composer_attachments.is_empty() {
+                            this.steer_oldest_queued_message(cx);
                         }
                     }
                     ComposerEvent::Edited => {

@@ -2076,8 +2076,8 @@ impl Waku {
     }
 
     /// The text and attachment presentation accepted from the composer. The
-    /// exact provider prompt keeps its `@` mentions, while sent-message UI uses
-    /// `display_content` and the retained attachment metadata.
+    /// stored prompt keeps its `@` mentions and visible command syntax, while
+    /// sent-message UI uses `display_content` and retained attachment metadata.
     pub(super) fn submission_with_attachments(
         &mut self,
         prompt: &str,
@@ -2360,12 +2360,7 @@ impl Waku {
             return None;
         }
         let theme = Theme::current(cx);
-        let steerable = session.is_busy()
-            && session.status != SessionStatus::Connecting
-            && self
-                .runtimes
-                .get(&session.id)
-                .is_some_and(|runtime| runtime.driver.supports_steer());
+        let steerable = self.session_can_steer(session);
         let mut list = div().flex().flex_col().py(px(4.0));
         for message in &session.queued_messages {
             let message_id = message.id;

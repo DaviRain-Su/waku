@@ -11,7 +11,11 @@ import {
 import { tmpdir } from "node:os";
 import { dirname, extname, join, resolve } from "node:path";
 import { parseArgs } from "node:util";
-import { defaultDownloadUrlPrefix, generateAppcast } from "./appcast";
+import {
+  defaultDownloadUrlPrefix,
+  generateAppcast,
+  githubReleaseDownloadPrefix,
+} from "./appcast";
 import { extractReleaseNotes } from "./changelog";
 
 const appName = "ProofShip";
@@ -31,7 +35,7 @@ Usage:
 The default run builds a signed, notarized DMG, packages the Sparkle update
 archive, regenerates the signed appcast (with binary deltas against recent
 releases), and uploads everything to Cloudflare R2 — the bucket behind
-https://releases.waku.sh. One-time setup lives in RELEASING.md.
+https://github.com/DaviRain-Su/proof_ship/releases. One-time setup lives in RELEASING.md.
 
 Options:
   --local                       Build, notarize, and write the DMG + zip
@@ -158,8 +162,6 @@ const r2Destination = `${r2Remote}:${r2Bucket}`;
 // A bucket-scoped R2 API token cannot create buckets, and rclone otherwise
 // checks/creates one before writing. The bucket must already exist.
 const rcloneFlags = ["--s3-no-check-bucket"];
-const downloadUrlPrefix =
-  process.env.WAKU_DOWNLOAD_URL_PREFIX ?? defaultDownloadUrlPrefix;
 const historyCount = Number(process.env.WAKU_HISTORY_COUNT ?? "15");
 const skipHistory = process.env.WAKU_NO_HISTORY === "1";
 
@@ -180,8 +182,8 @@ if (!Number.isSafeInteger(historyCount) || historyCount < 0) {
   throw new Error("WAKU_HISTORY_COUNT must be a non-negative integer.");
 }
 if (!values["skip-build"] && (!analyticsEndpoint || !analyticsWebsiteId)) {
-  throw new Error(
-    "Set WAKU_ANALYTICS_ENDPOINT and WAKU_ANALYTICS_WEBSITE_ID before building a release.",
+  console.log(
+    "WAKU_ANALYTICS_ENDPOINT / WAKU_ANALYTICS_WEBSITE_ID unset; building without analytics.",
   );
 }
 
@@ -219,6 +221,8 @@ if (!cargoPackage) {
 const version = cargoPackage.version;
 const shortVersion = version.split("-", 1)[0];
 const buildNumber = explicitBuildNumber ?? derivedBuildNumber(version);
+const downloadUrlPrefix =
+  process.env.WAKU_DOWNLOAD_URL_PREFIX ?? githubReleaseDownloadPrefix(version);
 const dmgName = `${appName}-${version}.dmg`;
 const zipName = `${appName}-${version}.zip`;
 if (publishing && version !== shortVersion) {

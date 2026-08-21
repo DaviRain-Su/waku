@@ -19,7 +19,11 @@ import { join, resolve } from "node:path";
 
 const projectRoot = resolve(import.meta.dir, "..");
 
-export const defaultDownloadUrlPrefix = "https://releases.waku.sh/";
+export const githubReleaseDownloadPrefix = (version: string) =>
+  `https://github.com/DaviRain-Su/proof_ship/releases/download/v${version}/`;
+
+export const defaultDownloadUrlPrefix =
+  "https://github.com/DaviRain-Su/proof_ship/releases/latest/download/";
 
 /** Locate Sparkle's `generate_appcast`: SPARKLE_BIN first, then the pinned
  *  distribution scripts/bundle.sh caches under .waku-cache, then PATH. */

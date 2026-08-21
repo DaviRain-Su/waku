@@ -989,9 +989,9 @@ mod windows {
     /// binary an item is for, and guessing from the enclosure filename would
     /// be a contract hiding in a string.
     #[cfg(target_arch = "aarch64")]
-    const FEED_URL: &str = "https://releases.waku.sh/appcast-windows-aarch64.xml";
+    const FEED_URL: &str = "https://github.com/DaviRain-Su/proof_ship/releases/latest/download/appcast-windows-aarch64.xml";
     #[cfg(not(target_arch = "aarch64"))]
-    const FEED_URL: &str = "https://releases.waku.sh/appcast-windows-x86_64.xml";
+    const FEED_URL: &str = "https://github.com/DaviRain-Su/proof_ship/releases/latest/download/appcast-windows-x86_64.xml";
 
     /// Read out of `resources/Info.plist` by the build script, so macOS and
     /// Windows cannot end up trusting different keys.

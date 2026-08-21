@@ -2,7 +2,7 @@
 set -eu
 
 # Installs ProofShip for Linux into ~/.local — no root, no package manager.
-# Downloads the release tarball from https://releases.waku.sh, unpacks it as
+# Downloads the release tarball from GitHub Releases, unpacks it as
 # ~/.local/proofship.app, links the binary onto PATH, and registers the desktop
 # entry. docs/linux.md documents the equivalent manual steps.
 #
@@ -31,7 +31,7 @@ main() {
     app_dir="$HOME/.local/proofship.app"
     bin_link="$HOME/.local/bin/proofship"
     desktop_file="$HOME/.local/share/applications/sh.proofship.desktop"
-    releases="${WAKU_RELEASES_URL:-https://releases.waku.sh}"
+    github_releases="${WAKU_RELEASES_URL:-https://github.com/DaviRain-Su/proof_ship/releases}"
 
     case "${1:-}" in
         --uninstall) uninstall; return ;;
@@ -47,7 +47,7 @@ main() {
     platform="$(uname -s)"
     if [ "$platform" = "Darwin" ]; then
         echo "ProofShip for macOS ships as a signed .dmg that updates itself." >&2
-        echo "Download it from https://waku.sh" >&2
+        echo "Download it from https://github.com/DaviRain-Su/proof_ship/releases" >&2
         exit 1
     fi
     if [ "$platform" != "Linux" ]; then
@@ -61,7 +61,7 @@ main() {
         aarch64 | arm64) target="aarch64-unknown-linux-gnu" ;;
         *)
             echo "Unsupported architecture: $machine" >&2
-            echo "Build from source: https://github.com/egoist/waku" >&2
+            echo "Build from source: https://github.com/DaviRain-Su/proof_ship" >&2
             exit 1
             ;;
     esac
@@ -85,8 +85,8 @@ main() {
     else
         version="${WAKU_VERSION:-}"
         if [ -z "$version" ]; then
-            if ! version="$(fetch "$releases/latest-linux.txt")"; then
-                echo "Could not reach $releases/latest-linux.txt." >&2
+            if ! version="$(fetch "$github_releases/latest/download/latest-linux.txt")"; then
+                echo "Could not reach $github_releases/latest/download/latest-linux.txt." >&2
                 echo "Pass WAKU_VERSION to install a specific version." >&2
                 exit 1
             fi
@@ -97,8 +97,9 @@ main() {
             exit 1
         fi
         echo "Downloading ProofShip $version for $machine"
-        if ! fetch "$releases/proofship-$version-$target.tar.gz" >"$archive"; then
-            echo "Download failed: $releases/proofship-$version-$target.tar.gz" >&2
+        archive_url="$github_releases/download/v$version/proofship-$version-$target.tar.gz"
+        if ! fetch "$archive_url" >"$archive"; then
+            echo "Download failed: $archive_url" >&2
             exit 1
         fi
     fi

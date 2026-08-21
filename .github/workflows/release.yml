@@ -397,7 +397,7 @@ jobs:
           # their entries; a first run simply starts from nothing.
           for arch in x86_64 aarch64; do
             curl -fsSL --max-time 30 \
-              "https://releases.waku.sh/appcast-windows-$arch.xml" \
+              "https://github.com/DaviRain-Su/proof_ship/releases/latest/download/appcast-windows-$arch.xml" \
               -o "artifacts/appcast-windows-$arch.xml" || true
           done
           bun scripts/appcast-windows.ts artifacts "$VERSION"

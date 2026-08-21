@@ -24,12 +24,11 @@
     <string>1</string>
     <key>LSMinimumSystemVersion</key>
     <string>13.0</string>
-    <!-- Sparkle auto-update configuration. The appcast feed still lives in
-         the waku-releases Cloudflare R2 bucket behind releases.waku.sh (legacy
-         endpoint), and the private half of SUPublicEDKey signs each archive
-         from the login keychain during `bun run release` (see RELEASING.md). -->
+    <!-- Sparkle auto-update configuration. The appcast is published next to
+         each GitHub Release; the private half of SUPublicEDKey signs each
+         archive during `bun run release` (see RELEASING.md). -->
     <key>SUFeedURL</key>
-    <string>https://releases.waku.sh/appcast.xml</string>
+    <string>https://github.com/DaviRain-Su/proof_ship/releases/latest/download/appcast.xml</string>
     <key>SUPublicEDKey</key>
     <string>gv9GLMPjH5yMQkZMFXnoNfHOyL8/7KGzl/jzAqlzZZY=</string>
 	<key>NSHighResolutionCapable</key>

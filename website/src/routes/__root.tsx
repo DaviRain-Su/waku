@@ -10,9 +10,9 @@ import type { ReactNode } from 'react'
 import appCss from '@/styles.css?url'
 
 const SITE_URL = 'https://waku.sh'
-const TITLE = 'ProofShip — one native app for all your coding agents'
+const TITLE = 'ProofShip — one native app for local agents, and shipping to X Layer'
 const DESCRIPTION =
-  'A fast, native app for local coding agents. Amp, Claude Code, Codex, Cursor, OpenCode, Grok, and Pi — one timeline, entirely on your machine.'
+  'A fast, native desktop app for the coding agents you already have. Preview, sign, and deploy to X Layer from the same window — no browser wallet extension required.'
 
 export const Route = createRootRouteWithContext<{
   queryClient: QueryClient

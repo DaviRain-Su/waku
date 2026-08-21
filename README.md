@@ -1,8 +1,11 @@
 # ProofShip
 
-ProofShip is a fast, native desktop app for working with local coding agents. It is
-built in Rust with [GPUI](https://github.com/zed-industries/zed/tree/main/crates/gpui)
-and keeps projects, sessions, transcripts on your machine.
+ProofShip is a fast, native desktop app for working with the coding agents you
+already have. It keeps projects, sessions, and transcripts on your machine,
+then lets you preview, sign, and deploy to X Layer from the same window — no
+browser wallet extension required.
+
+It is built in Rust with [GPUI](https://github.com/zed-industries/zed/tree/main/crates/gpui).
 
 ## Install
 

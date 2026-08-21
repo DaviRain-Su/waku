@@ -241,12 +241,12 @@ function Home() {
                 Not backed by Y Combinator
               </div>
               <h1 className="max-w-4xl text-4xl font-semibold tracking-[-0.03em] text-balance md:text-[3.4rem] md:leading-[1.04]">
-                One native app for all your coding agents.
+                One native app for local agents — and shipping to X Layer.
               </h1>
               <p className="mt-5 max-w-[36rem] text-[17px] leading-relaxed text-pretty text-muted-foreground">
-                ProofShip drives the agent CLIs you already have — sessions,
-                transcripts, tool activity, and checkpoints in one fast
-                graphite window, entirely on your machine.
+                ProofShip drives the agent CLIs you already have, then lets you
+                preview, sign, and deploy to X Layer from the same window — no
+                browser wallet extension required.
               </p>
               <div className="mt-8 flex flex-wrap items-center gap-x-5 gap-y-3">
                 <DownloadMenu

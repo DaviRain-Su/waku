@@ -399,6 +399,7 @@ jobs:
           # "latest" to. In-app updates read the appcasts instead.
           echo "$VERSION" > artifacts/latest-linux.txt
           echo "$VERSION" > artifacts/latest-windows.txt
+          cp website/public/install.sh artifacts/install.sh
 
       # Signed here rather than on the Windows runners: this is the only job
       # that holds both installers, and the signing key stays in one place.
@@ -457,3 +458,4 @@ jobs:
             artifacts/appcast-windows-*.xml
             artifacts/latest-linux.txt
             artifacts/latest-windows.txt
+            artifacts/install.sh

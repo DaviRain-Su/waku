@@ -46,8 +46,10 @@ main() {
 
     platform="$(uname -s)"
     if [ "$platform" = "Darwin" ]; then
-        echo "ProofShip for macOS ships as a signed .dmg that updates itself." >&2
+        echo "ProofShip for macOS ships as an ad-hoc signed .dmg (no Apple Developer certificate)." >&2
         echo "Download it from https://github.com/DaviRain-Su/proof_ship/releases" >&2
+        echo "Gatekeeper will block a double-click. Control-click the app and choose Open," >&2
+        echo "or run: xattr -cr /Applications/ProofShip.app" >&2
         exit 1
     fi
     if [ "$platform" != "Linux" ]; then

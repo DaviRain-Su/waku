@@ -9,12 +9,30 @@ It is built in Rust with [GPUI](https://github.com/zed-industries/zed/tree/main/
 
 ## Install
 
-On macOS, [download the signed `.dmg`](https://waku.sh). It updates itself.
+Download builds from the
+[GitHub releases](https://github.com/DaviRain-Su/proof_ship/releases).
+
+On macOS, download `ProofShip-<version>.dmg`. These builds are ad-hoc signed
+(no Apple Developer certificate), so Gatekeeper will block a double-click.
+Clear the quarantine flag, then open the disk image:
+
+```sh
+xattr -cr ~/Downloads/ProofShip-*.dmg
+open ~/Downloads/ProofShip-*.dmg
+```
+
+If macOS still refuses the app after you drag it to Applications:
+
+```sh
+xattr -cr /Applications/ProofShip.app
+```
+
+You can also Control-click the app and choose **Open**.
 
 On Linux:
 
 ```sh
-curl -fsSL https://waku.sh/install.sh | sh
+curl -fsSL https://github.com/DaviRain-Su/proof_ship/releases/latest/download/install.sh | sh
 ```
 
 The script installs into `~/.local` without root. See
@@ -22,8 +40,8 @@ The script installs into `~/.local` without root. See
 uninstalling.
 
 On Windows, run `ProofShip-<version>-<arch>-Setup.exe` from the
-[latest release](https://github.com/egoist/waku/releases/latest). It installs
-per-user and updates itself. A portable `.zip` is published alongside it. See
+[latest release](https://github.com/DaviRain-Su/proof_ship/releases/latest). It installs
+per-user. A portable `.zip` is published alongside it. See
 [docs/windows.md](docs/windows.md) for requirements and what is not available
 there yet.
 

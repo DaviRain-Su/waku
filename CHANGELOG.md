@@ -18,6 +18,7 @@ the original feature bullet instead of adding separate entries for them.
 
 ## [0.1.12]
 
+- Ship unsigned macOS builds without an Apple Developer certificate
 - Rebrand the desktop as ProofShip
 - Add in-app preview wallet, balances, and a wallet network switcher
 - Add X Layer RPC fallbacks for signing and deployment

@@ -40,7 +40,7 @@ export const Route = createFileRoute('/')({
 })
 
 const WINDOWS_DOCS_URL =
-  'https://github.com/egoist/waku/blob/main/docs/windows.md'
+  'https://github.com/DaviRain-Su/proof_ship/blob/dev/docs/windows.md'
 
 const PROVIDERS = [
   { slug: 'amp', label: 'Amp' },
@@ -83,7 +83,7 @@ const FEATURES = [
   {
     icon: RefreshCw,
     title: 'Quietly current',
-    body: 'Signed, notarized, and auto-updated with binary deltas via Sparkle. The app stays fresh without asking for your attention.',
+    body: 'macOS, Linux, and Windows builds ship from GitHub Releases. Drag in the app, keep working — no Electron, no account.',
   },
 ]
 
@@ -154,7 +154,7 @@ function DownloadMenu({
               macOS (Apple Silicon)
             </Menu.LinkItem>
             <Menu.LinkItem
-              href="https://github.com/egoist/waku/blob/main/docs/linux.md"
+              href="https://github.com/DaviRain-Su/proof_ship/blob/dev/docs/linux.md"
               target="_blank"
               rel="noreferrer"
               closeOnClick
@@ -205,7 +205,7 @@ function Home() {
             </a>
             <div className="flex items-center gap-5">
               <a
-                href="https://github.com/egoist/waku"
+                href="https://github.com/DaviRain-Su/proof_ship"
                 target="_blank"
                 rel="noreferrer"
                 aria-label="GitHub"

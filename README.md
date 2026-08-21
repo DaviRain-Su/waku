@@ -1,9 +1,20 @@
 # ProofShip
 
-ProofShip is a fast, native desktop app for working with the coding agents you
-already have. It keeps projects, sessions, and transcripts on your machine,
-then lets you preview, sign, and deploy to X Layer from the same window — no
-browser wallet extension required.
+[![Latest release](https://img.shields.io/github/v/release/DaviRain-Su/proof_ship)](https://github.com/DaviRain-Su/proof_ship/releases/latest)
+[![License: GPL-3.0](https://img.shields.io/github/license/DaviRain-Su/proof_ship)](LICENSE)
+[![macOS | Linux | Windows](https://img.shields.io/badge/platform-macOS%20%7C%20Linux%20%7C%20Windows-111)](https://github.com/DaviRain-Su/proof_ship/releases/latest)
+
+Native desktop app for local coding agents — plus on-device wallets and X Layer
+deploy. Rust, GPUI, no cloud account.
+
+ProofShip drives the agent CLIs you already have (Amp, Claude Code, Codex,
+Cursor, Grok, Kimi, OpenCode, Pi). Projects, sessions, and transcripts stay on
+your machine. From the same window you can preview, sign, and deploy EVM
+contracts to [OKX X Layer](https://web3.okx.com/xlayer) — no browser wallet
+extension required.
+
+- Website: [pfs.grok.me](https://pfs.grok.me)
+- Downloads: [GitHub Releases](https://github.com/DaviRain-Su/proof_ship/releases/latest) (desktop installers — not npm/Docker packages)
 
 It is built in Rust with [GPUI](https://github.com/zed-industries/zed/tree/main/crates/gpui).
 

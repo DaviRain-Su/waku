@@ -6,7 +6,7 @@ set -eu
 # ~/.local/proofship.app, links the binary onto PATH, and registers the desktop
 # entry. docs/linux.md documents the equivalent manual steps.
 #
-#   curl -fsSL https://waku.sh/install.sh | sh
+#   curl -fsSL https://github.com/DaviRain-Su/proof_ship/releases/latest/download/install.sh | sh
 #
 # Environment:
 #   WAKU_VERSION        install this version instead of the latest
@@ -18,8 +18,8 @@ usage() {
 Install ProofShip for Linux into ~/.local.
 
 Usage:
-  curl -fsSL https://waku.sh/install.sh | sh
-  curl -fsSL https://waku.sh/install.sh | sh -s -- --uninstall
+  curl -fsSL https://github.com/DaviRain-Su/proof_ship/releases/latest/download/install.sh | sh
+  curl -fsSL https://github.com/DaviRain-Su/proof_ship/releases/latest/download/install.sh | sh -s -- --uninstall
 
 Options:
   --uninstall   Remove ProofShip, leaving ~/.proofship (or ~/.waku) alone
